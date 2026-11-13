@@ -56,10 +56,36 @@ export const sfx = {
     tone(300, 0.12, 'square', 0.03);
     tone(240, 0.14, 'square', 0.03, 0.13);
   },
+  /** Loud rising-falling siren, three sweeps. */
+  siren() {
+    for (let i = 0; i < 3; i++) {
+      const t = i * 0.42;
+      tone(680, 0.2, 'square', 0.05, t);
+      tone(430, 0.2, 'square', 0.05, t + 0.21);
+    }
+  },
+  /** Achievement fanfare. */
+  medal() {
+    tone(523, 0.09, 'triangle', 0.04);
+    tone(659, 0.09, 'triangle', 0.04, 0.09);
+    tone(784, 0.09, 'triangle', 0.045, 0.18);
+    tone(1047, 0.22, 'triangle', 0.05, 0.27);
+  },
+  /** Little sparkle for stars and rewards. */
+  star() {
+    tone(1319, 0.07, 'triangle', 0.03);
+    tone(1760, 0.09, 'triangle', 0.03, 0.06);
+  },
+  /** Soft pop when a cube lands in a module. */
+  drop() {
+    tone(320, 0.06, 'sine', 0.04);
+    tone(180, 0.08, 'sine', 0.03, 0.05);
+  },
   success() {
     tone(523, 0.09, 'triangle');
     tone(659, 0.09, 'triangle', 0.035, 0.08);
     tone(784, 0.14, 'triangle', 0.04, 0.16);
+    tone(1047, 0.2, 'triangle', 0.045, 0.26);
   },
   fail() {
     tone(320, 0.16, 'sawtooth', 0.025);

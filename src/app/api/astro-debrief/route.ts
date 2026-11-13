@@ -14,12 +14,12 @@ interface DebriefInput {
 }
 
 function fallback(body: DebriefInput): string {
-  const place = body.location === 'mars' ? 'Mars Jezero Crater' : 'the Lunar South Pole';
-  return `Mission complete, Commander! You brought home ${body.science ?? 0} science points from ${place} with your crew's health at ${body.health ?? 100}%. ${
+  const place = body.location === 'mars' ? 'Mars' : 'the Moon';
+  return `Mission done, Commander! You brought home ${body.science ?? 0} science points from ${place} with your crew at ${body.health ?? 100}% health. ${
     body.flareDay
-      ? `Remember the solar flare on Day ${body.flareDay}? Real astronauts rely on NASA's DONKI system for exactly that kind of warning!`
-      : 'Every choice you made balanced power, safety, and discovery — that is real flight-director thinking!'
-  } Fun fact: the Sun is so big that 1.3 million Earths could fit inside it. Rest well — the next outpost is waiting!`;
+      ? `Remember the solar flare on Day ${body.flareDay}? Real astronauts use NASA's DONKI alerts exactly like that!`
+      : 'You balanced power, safety, and science. Real astronaut thinking!'
+  } Fun fact: 1.3 million Earths could fit inside the Sun!`;
 }
 
 export async function POST(req: Request) {
@@ -37,11 +37,11 @@ export async function POST(req: Request) {
         {
           role: 'assistant',
           content:
-            'You are A.S.T.R.O., the friendly robot co-pilot in the kids game "Outpost Director: Moon & Mars". You write warm, encouraging mission debriefs for children aged 7-12. Use simple vocabulary, at most 3 short sentences plus one fun real space fact, and at most one emoji. Never exceed 90 words.',
+            'You are A.S.T.R.O., the friendly robot co-pilot in the kids game "Outpost Director: Moon & Mars". Write a warm, happy mission debrief for children aged 7-10. Use VERY easy words that a 7-year-old knows. Use short sentences. At most 4 sentences and 60 words total. Include one fun real space fact. Use at most one emoji.',
         },
         {
           role: 'user',
-          content: `Write my mission debrief. Location: ${body.location === 'mars' ? 'Mars Jezero Crater' : 'Lunar South Pole'}. Science earned: ${body.science ?? 0} points. Crew health: ${body.health ?? 100}%. Crew morale: ${body.morale ?? 80}%. Days served: ${body.daysSurvived ?? 14}. Badges earned: ${(body.badges ?? []).join(', ') || 'none'}. ${body.flareDay ? `The player handled a solar flare on day ${body.flareDay}.` : ''}`,
+          content: `Write my mission debrief. Location: ${body.location === 'mars' ? 'Mars, Jezero Crater' : 'the Moon, south pole'}. Science earned: ${body.science ?? 0} points. Crew health: ${body.health ?? 100}%. Crew happiness: ${body.morale ?? 80}%. Days served: ${body.daysSurvived ?? 14}. Medals earned: ${(body.badges ?? []).join(', ') || 'none'}. ${body.flareDay ? `The player safely handled a solar flare on day ${body.flareDay}.` : ''}`,
         },
       ],
       thinking: { type: 'disabled' },

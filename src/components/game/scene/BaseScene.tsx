@@ -1,8 +1,13 @@
 'use client';
 
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import { X } from 'lucide-react';
+import { sfx } from '@/lib/game/audio';
+import type { Allocation, ModuleKey } from '@/lib/game/types';
 
 export type ModuleStatus = 'nominal' | 'warning' | 'critical';
+
+export type SceneModuleId = 'solar' | 'lab' | 'habitat' | 'greenhouse' | 'bunker';
 
 export interface BaseSceneProps {
   location: 'moon' | 'mars';
@@ -16,6 +21,10 @@ export interface BaseSceneProps {
   };
   roverState?: 'parked' | 'driving' | 'sheltered';
   sheltered?: boolean; // crew inside bunker: windows dim, astronauts walk over
+  /** How many power cubes are currently assigned to each game module. */
+  cubeCounts?: Allocation;
+  /** Live values for the module info cards. */
+  values?: { power: number; oxygen: number; food: number; shield: number; science: number };
   effects?: {
     dim?: number; // 0..1 -> black overlay opacity = dim * 0.55
     fog?: number; // 0..1 -> drifting blurred fog blobs
@@ -24,6 +33,42 @@ export interface BaseSceneProps {
     night?: boolean; // darker sky tint
   };
 }
+
+/** Simple kid language for every building on the base. */
+const MODULE_INFO: Record<
+  SceneModuleId,
+  { name: string; what: string; tip: string; value?: 'power' | 'oxygen' | 'food' | 'shield' | 'science' }
+> = {
+  solar: {
+    name: 'Solar Panels',
+    what: 'They catch sunshine to make power.',
+    tip: 'Dust and night make less power. Pick smart plans!',
+  },
+  lab: {
+    name: 'Science Lab',
+    what: 'The crew does experiments here.',
+    tip: 'More cubes here = more science points!',
+    value: 'science',
+  },
+  habitat: {
+    name: 'Crew Home',
+    what: 'The crew lives here. It makes fresh air.',
+    tip: 'Keep oxygen above 25 — give cubes to Life Support!',
+    value: 'oxygen',
+  },
+  greenhouse: {
+    name: 'Greenhouse',
+    what: 'Plants grow food for the crew here.',
+    tip: 'Keep food above 20 — feed the plants!',
+    value: 'food',
+  },
+  bunker: {
+    name: 'Safety Bunker',
+    what: 'A safe room under the dirt.',
+    tip: 'Shields block bad sun rays from hurting the crew.',
+    value: 'shield',
+  },
+};
 
 /* ------------------------------------------------------------------ */
 /* Static data (module scope: deterministic, hydration-safe)           */
@@ -223,27 +268,58 @@ function SkyBackdrop({ location }: { location: 'moon' | 'mars' }) {
   );
 }
 
+const STATUS_WORD: Record<ModuleStatus, { word: string; cls: string }> = {
+  nominal: { word: 'Good!', cls: 'bg-emerald-400/25 text-emerald-200' },
+  warning: { word: 'Low!', cls: 'bg-amber-400/25 text-amber-200' },
+  critical: { word: 'Danger!', cls: 'bg-rose-500/30 text-rose-200' },
+};
+
 function ModuleSlot({
   label,
   status,
   style,
+  cubes,
+  onTap,
   children,
 }: {
   label: string;
   status: ModuleStatus;
   style: CSSProperties;
+  cubes?: number;
+  onTap?: () => void;
   children: ReactNode;
 }) {
+  const clickable = typeof onTap === 'function';
   return (
     <div className="absolute z-10" style={style}>
-      <div className={`rounded-[2rem] border-2 border-dashed p-1.5 sm:p-2 ${RING_TONES[status]}`}>
+      <button
+        type="button"
+        onClick={onTap}
+        aria-label={`${label} module. Tap to learn what it does.`}
+        className={`block w-full rounded-[2rem] border-2 border-dashed p-1.5 text-left transition-transform sm:p-2 ${RING_TONES[status]} ${
+          clickable ? 'cursor-pointer hover:scale-105 active:scale-95' : 'cursor-default'
+        }`}
+      >
         <div className={status === 'critical' ? 'animate-[shake_0.6s_infinite]' : undefined}>{children}</div>
-        <div className="mt-1 flex justify-center">
-          <span className="rounded-full bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/85">
+        <div className="mt-1 flex items-center justify-center gap-1.5">
+          <span className="rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white/90">
             {label}
           </span>
+          {typeof cubes === 'number' && cubes > 0 && (
+            <span
+              className="flex items-center gap-0.5 rounded-full bg-amber-400/90 px-1.5 py-0.5 text-[11px] font-black text-amber-950 shadow-[0_0_10px_rgba(251,191,36,0.7)]"
+              aria-label={`${cubes} power cubes`}
+            >
+              ⚡{cubes}
+            </span>
+          )}
+          {status === 'critical' && (
+            <span className="animate-ping rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-black text-white" aria-hidden>
+              !
+            </span>
+          )}
         </div>
-      </div>
+      </button>
     </div>
   );
 }
@@ -542,10 +618,28 @@ export default function BaseScene({
   statuses,
   roverState = 'parked',
   sheltered = false,
+  cubeCounts,
+  values,
   effects = {},
 }: BaseSceneProps) {
   const { dim = 0, fog = 0, radiation = false, storm = false, night = false } = effects;
   const palette = PALETTES[location];
+  const [info, setInfo] = useState<SceneModuleId | null>(null);
+
+  const openInfo = (id: SceneModuleId) => {
+    sfx.click();
+    setInfo(id);
+  };
+
+  const valueLabel = (id: SceneModuleId): string | null => {
+    if (!values) return null;
+    const v = MODULE_INFO[id].value;
+    if (!v) return null;
+    if (v === 'science') return `Science: ${values.science} points`;
+    return `${v.charAt(0).toUpperCase()}${v.slice(1)}: ${values[v]}%`;
+  };
+
+  const infoData = info ? MODULE_INFO[info] : null;
 
   return (
     <div
@@ -601,24 +695,50 @@ export default function BaseScene({
         ))}
       </div>
 
-      {/* modules with status rings */}
-      <ModuleSlot label="SOLAR" status={statuses.solar} style={{ left: '2.5%', width: '15%', bottom: '30%' }}>
+      {/* modules with status rings — tap one to learn what it does */}
+      <ModuleSlot
+        label="SOLAR"
+        status={statuses.solar}
+        style={{ left: '2.5%', width: '15%', bottom: '30%' }}
+        cubes={undefined}
+        onTap={() => openInfo('solar')}
+      >
         <SolarArray />
       </ModuleSlot>
-      <ModuleSlot label="LAB" status={statuses.lab} style={{ left: '21%', width: '12.5%', bottom: '29.5%' }}>
+      <ModuleSlot
+        label="LAB"
+        status={statuses.lab}
+        style={{ left: '21%', width: '12.5%', bottom: '29.5%' }}
+        cubes={cubeCounts?.science}
+        onTap={() => openInfo('lab')}
+      >
         <ScienceLab crewInside={sheltered} />
       </ModuleSlot>
-      <ModuleSlot label="HABITAT" status={statuses.habitat} style={{ left: '41%', width: '18%', bottom: '30%' }}>
+      <ModuleSlot
+        label="HABITAT"
+        status={statuses.habitat}
+        style={{ left: '41%', width: '18%', bottom: '30%' }}
+        cubes={cubeCounts?.life}
+        onTap={() => openInfo('habitat')}
+      >
         <HabitatModule crewInside={sheltered} />
       </ModuleSlot>
       <ModuleSlot
         label="GREENHOUSE"
         status={statuses.greenhouse}
         style={{ left: '62.5%', width: '13.5%', bottom: '30%' }}
+        cubes={cubeCounts?.green}
+        onTap={() => openInfo('greenhouse')}
       >
         <Greenhouse />
       </ModuleSlot>
-      <ModuleSlot label="BUNKER" status={statuses.bunker} style={{ left: '80%', width: '16%', bottom: '28.5%' }}>
+      <ModuleSlot
+        label="BUNKER"
+        status={statuses.bunker}
+        style={{ left: '80%', width: '16%', bottom: '28.5%' }}
+        cubes={cubeCounts?.shield}
+        onTap={() => openInfo('bunker')}
+      >
         <BunkerModule />
       </ModuleSlot>
 
@@ -683,6 +803,52 @@ export default function BaseScene({
       <div className="absolute left-3 top-3 z-30 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold tracking-wide text-white/90">
         {location === 'mars' ? 'SOL' : 'DAY'} {day}
       </div>
+
+      {/* tap hint chip */}
+      {!info && (
+        <div className="absolute right-3 top-3 z-30 rounded-full bg-black/50 px-3 py-1 text-[11px] font-semibold text-amber-200/90 animate-[bounce-soft_2.4s_ease-in-out_infinite]">
+          👆 Tap a building!
+        </div>
+      )}
+
+      {/* module info card */}
+      {info && infoData && (
+        <div
+          className="absolute inset-x-3 bottom-3 z-40 animate-[pop-in_0.25s_ease-out]"
+          role="dialog"
+          aria-label={`${infoData.name} information`}
+        >
+          <div className="panel rounded-2xl border-2 border-amber-300/40 p-4 shadow-[0_10px_40px_rgba(0,0,0,0.6)]">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="font-display text-lg text-white">{infoData.name}</h4>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${STATUS_WORD[statuses[info]].cls}`}>
+                    {STATUS_WORD[statuses[info]].word}
+                  </span>
+                  {valueLabel(info) && (
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-bold text-amber-200">
+                      {valueLabel(info)}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-violet-100/90">{infoData.what}</p>
+                <p className="mt-1 text-xs font-semibold text-amber-200/90">💡 {infoData.tip}</p>
+              </div>
+              <button
+                onClick={() => {
+                  sfx.click();
+                  setInfo(null);
+                }}
+                aria-label="Close module info"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20 active:scale-90"
+              >
+                <X className="h-4 w-4 text-violet-100" aria-hidden />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -22,7 +22,7 @@ function AstroFace({ mood }: { mood: AstroMood }) {
         : 'M14 23 Q20 29 26 23'; // smile
 
   return (
-    <svg viewBox="0 0 40 44" className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 drop-shadow-[0_4px_14px_rgba(167,139,250,0.4)]" role="img" aria-label={`A.S.T.R.O. looks ${mood}`}>
+    <svg viewBox="0 0 40 44" className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 drop-shadow-[0_4px_14px_rgba(167,139,250,0.4)]" role="img" aria-label={`A.S.T.R.O. looks ${mood}`}>
       {/* antenna */}
       <line x1="20" y1="6" x2="20" y2="12" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" />
       <circle cx="20" cy="4.5" r="2.6" fill={c} className="animate-[blink_1.6s_ease-in-out_infinite]" />
@@ -89,17 +89,17 @@ function AstroTypewriter({ mood, text, footer }: Props) {
           <AstroFace mood={mood} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-xs tracking-widest uppercase" style={{ color: MOOD_COLOR[mood] }}>
+          <p className="font-display text-sm tracking-widest uppercase" style={{ color: MOOD_COLOR[mood] }}>
             A.S.T.R.O. — Co-Pilot
           </p>
           <button
             onClick={skip}
             aria-label="Skip typing animation"
-            className="text-left w-full mt-1 rounded-xl bg-space-800/70 border border-violet-400/15 px-3 py-2.5 text-sm text-violet-50 leading-relaxed cursor-pointer"
+            className="text-left w-full mt-1 rounded-xl bg-space-800/70 border border-violet-400/15 px-3.5 py-3 text-base font-semibold text-violet-50 leading-relaxed cursor-pointer"
           >
             {shown}
             {!done && (
-              <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-fuchsia-300 animate-pulse" aria-hidden />
+              <span className="inline-block w-2 h-5 ml-0.5 align-middle bg-fuchsia-300 animate-pulse" aria-hidden />
             )}
           </button>
           {footer}

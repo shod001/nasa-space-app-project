@@ -6,33 +6,35 @@ import { sfx } from '@/lib/game/audio';
 
 export default function TitleScreen({ onStart }: { onStart: () => void }) {
   return (
-    <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12">
-      <div className="w-full max-w-4xl flex flex-col items-center text-center">
-        <div className="relative w-28 h-28 sm:w-36 sm:h-36 animate-[floaty_5s_ease-in-out_infinite]">
+    <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-8 sm:py-12">
+      <div className="flex w-full max-w-5xl flex-col items-center text-center">
+        <div className="relative h-32 w-32 animate-[floaty_5s_ease-in-out_infinite] sm:h-40 sm:w-40">
           <Image
             src="/images/astro-bot.png"
             alt="A.S.T.R.O., your friendly robot co-pilot"
             fill
-            sizes="(max-width: 640px) 112px, 144px"
+            sizes="(max-width: 640px) 128px, 160px"
             className="object-contain drop-shadow-[0_10px_30px_rgba(192,132,252,0.45)]"
             priority
           />
         </div>
 
-        <p className="mt-4 text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-violet-300/80">
-          A NASA-data mission game
+        <p className="mt-4 text-sm font-black uppercase tracking-[0.3em] text-violet-300/80 sm:text-base">
+          A NASA space mission game
         </p>
-        <h1 className="font-display text-5xl sm:text-7xl font-semibold text-white title-glow leading-tight">
+        <h1 className="mt-1 font-display text-5xl font-semibold leading-tight text-white title-glow sm:text-7xl">
           Outpost Director
         </h1>
-        <p className="font-display text-2xl sm:text-4xl font-medium bg-gradient-to-r from-amber-300 via-fuchsia-300 to-emerald-300 bg-clip-text text-transparent mt-1">
+        <p className="animated-gradient mt-1 bg-gradient-to-r from-amber-300 via-fuchsia-300 to-emerald-300 bg-clip-text font-display text-2xl font-medium text-transparent sm:text-4xl">
           Moon &amp; Mars
         </p>
 
-        <p className="mt-5 max-w-xl text-sm sm:text-base text-violet-100/80">
-          You are the <span className="text-amber-300 font-bold">Outpost Commander</span>. Keep your crew
-          safe and happy, run amazing science, and survive <span className="font-bold text-white">14 days</span> of
-          real space surprises — guided by your co-pilot <span className="font-bold text-fuchsia-300">A.S.T.R.O.</span>
+        <p className="mt-5 max-w-2xl text-lg text-violet-100/85 sm:text-xl">
+          You are the <span className="font-bold text-amber-300">Commander</span>! Keep your crew
+          <span className="font-bold text-white"> safe</span> and <span className="font-bold text-emerald-300">happy</span>. Grow
+          food. Do <span className="font-bold text-fuchsia-300">science</span>. Survive
+          <span className="font-bold text-white"> 14 days </span>
+          of space surprises with your robot friend <span className="font-bold text-fuchsia-300">A.S.T.R.O.</span>
         </p>
 
         <button
@@ -40,24 +42,27 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
             sfx.launch();
             onStart();
           }}
-          className="mt-8 min-h-[56px] px-10 rounded-full font-display text-xl font-semibold text-space-950 bg-gradient-to-r from-amber-300 to-amber-400 hover:from-amber-200 hover:to-amber-300 active:scale-95 transition-all shadow-[0_10px_40px_rgba(251,191,36,0.35)] flex items-center gap-3"
+          className="mt-8 flex min-h-[64px] items-center gap-3 rounded-full border-b-4 border-amber-600 bg-gradient-to-r from-amber-300 to-amber-400 px-12 font-display text-2xl font-bold text-space-950 shadow-[0_10px_40px_rgba(251,191,36,0.35)] transition-all active:scale-95 hover:from-amber-200 hover:to-amber-300"
         >
-          <Rocket className="w-6 h-6" aria-hidden />
-          Start Mission
+          <Rocket className="h-7 w-7" aria-hidden />
+          Start Mission!
         </button>
 
-        <div className="mt-5 flex flex-wrap justify-center gap-2 text-xs">
-          <span className="panel-soft rounded-full px-3 py-1.5 text-violet-200 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-fuchsia-300" aria-hidden /> For explorers ages 7–12
+        <div className="mt-6 flex flex-wrap justify-center gap-2 text-sm">
+          <span className="panel-soft flex items-center gap-1.5 rounded-full px-4 py-2 text-violet-200">
+            <Sparkles className="h-4 w-4 text-fuchsia-300" aria-hidden /> Ages 7–12
           </span>
-          <span className="panel-soft rounded-full px-3 py-1.5 text-violet-200 flex items-center gap-1.5">
-            <Satellite className="w-3.5 h-3.5 text-emerald-300" aria-hidden /> Powered by real NASA data concepts
+          <span className="panel-soft flex items-center gap-1.5 rounded-full px-4 py-2 text-violet-200">
+            <Satellite className="h-4 w-4 text-emerald-300" aria-hidden /> Real NASA science
+          </span>
+          <span className="panel-soft flex items-center gap-1.5 rounded-full px-4 py-2 text-violet-200">
+            🎯 Easy, Normal, and Hard modes
           </span>
         </div>
 
-        <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-5 w-full max-w-2xl">
-          <div className="panel rounded-3xl p-1.5 rotate-[-2deg] hover:rotate-0 transition-transform">
-            <div className="relative aspect-[2/1] rounded-2xl overflow-hidden">
+        <div className="mt-10 grid w-full max-w-2xl grid-cols-2 gap-3 sm:gap-5">
+          <div className="panel rotate-[-2deg] rounded-3xl p-1.5 transition-transform hover:rotate-0">
+            <div className="relative aspect-[2/1] overflow-hidden rounded-2xl">
               <Image
                 src="/images/moon-hero.png"
                 alt="Cartoon moon base on the lunar south pole"
@@ -66,10 +71,10 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
                 className="object-cover"
               />
             </div>
-            <p className="py-2 font-display text-sm text-moon-300">Lunar South Pole</p>
+            <p className="py-2 font-display text-base text-moon-300">Lunar South Pole</p>
           </div>
-          <div className="panel rounded-3xl p-1.5 rotate-[2deg] hover:rotate-0 transition-transform">
-            <div className="relative aspect-[2/1] rounded-2xl overflow-hidden">
+          <div className="panel rotate-[2deg] rounded-3xl p-1.5 transition-transform hover:rotate-0">
+            <div className="relative aspect-[2/1] overflow-hidden rounded-2xl">
               <Image
                 src="/images/mars-hero.png"
                 alt="Cartoon Mars base in Jezero crater"
@@ -78,7 +83,7 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
                 className="object-cover"
               />
             </div>
-            <p className="py-2 font-display text-sm text-mars-400">Mars Jezero Crater</p>
+            <p className="py-2 font-display text-base text-mars-400">Mars Jezero Crater</p>
           </div>
         </div>
       </div>

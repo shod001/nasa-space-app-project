@@ -1,14 +1,16 @@
 'use client';
 
 import { useCallback, useReducer } from 'react';
-import { applyDeltas, endingFor, resolveDay } from '@/lib/game/engine';
+import { applyDeltas, checkAchievements, endingFor, pickEmergency, resolveDay } from '@/lib/game/engine';
 import { getEventForDay } from '@/lib/game/events';
 import {
   DEFAULT_ALLOCATION,
+  DIFFICULTIES,
   TOTAL_DAYS,
   emptyDeltas,
   type Allocation,
   type Choice,
+  type Difficulty,
   type GameState,
   type Location,
 } from '@/lib/game/types';
@@ -16,11 +18,14 @@ import {
 export type GameAction =
   | { type: 'START' }
   | { type: 'PICK_LOCATION'; location: Location }
+  | { type: 'PICK_DIFFICULTY'; difficulty: Difficulty }
   | { type: 'CONFIRM_SETUP' }
   | { type: 'PROCEED' }
   | { type: 'PICK_CHOICE'; choice: Choice }
   | { type: 'SET_ALLOC'; alloc: Allocation }
   | { type: 'RUN_DAY' }
+  | { type: 'DISMISS_ALERT' }
+  | { type: 'DISMISS_ACHIEVEMENT' }
   | { type: 'TOGGLE_SOUND' }
   | { type: 'TOGGLE_BADGE' }
   | { type: 'CLOSE_BADGE' }
@@ -30,10 +35,12 @@ function initialState(soundOn = true): GameState {
   return {
     phase: 'title',
     location: null,
+    difficulty: null,
     day: 1,
     resources: { power: 80, oxygen: 90, food: 75, shield: 100, fuelCells: 3 },
     crew: { health: 100, morale: 80 },
     science: 0,
+    goal: 380,
     allocation: { ...DEFAULT_ALLOCATION },
     event: null,
     chosen: null,
@@ -41,6 +48,9 @@ function initialState(soundOn = true): GameState {
     history: [],
     criticalHandled: 0,
     minFood: 75,
+    achievements: [],
+    pending: [],
+    alert: null,
     soundOn,
     badgeOpen: false,
     final: null,
@@ -53,10 +63,21 @@ function reducer(state: GameState, action: GameAction): GameState {
       return { ...state, phase: 'location' };
 
     case 'PICK_LOCATION':
-      return { ...state, location: action.location, phase: 'setup' };
+      return { ...state, location: action.location, phase: 'difficulty' };
 
-    case 'CONFIRM_SETUP':
-      if (!state.location) return state;
+    case 'PICK_DIFFICULTY': {
+      const cfg = DIFFICULTIES[action.difficulty];
+      return {
+        ...state,
+        difficulty: action.difficulty,
+        goal: cfg.goal,
+        resources: { ...cfg.start },
+        phase: 'setup',
+      };
+    }
+
+    case 'CONFIRM_SETUP': {
+      if (!state.location || !state.difficulty) return state;
       return {
         ...state,
         phase: 'briefing',
@@ -65,6 +86,7 @@ function reducer(state: GameState, action: GameAction): GameState {
         chosen: null,
         lastDeltas: null,
       };
+    }
 
     case 'PROCEED': {
       if (state.phase === 'briefing') return { ...state, phase: 'decision' };
@@ -93,9 +115,10 @@ function reducer(state: GameState, action: GameAction): GameState {
       return { ...state, allocation: action.alloc };
 
     case 'RUN_DAY': {
-      if (!state.event || !state.chosen || !state.location) return state;
+      if (!state.event || !state.chosen || !state.location || !state.difficulty) return state;
       const { deltas, notes } = resolveDay({
         location: state.location,
+        difficulty: state.difficulty,
         resources: state.resources,
         crewHealth: state.crew.health,
         crewMorale: state.crew.morale,
@@ -105,6 +128,16 @@ function reducer(state: GameState, action: GameAction): GameState {
       });
       const applied = applyDeltas(state.resources, state.crew, state.science, deltas);
       const note = notes.length ? notes.join(' ') : undefined;
+
+      const nextSnapshot = {
+        day: state.day,
+        resources: applied.resources,
+        crew: applied.crew,
+        science: applied.science,
+        goal: state.goal,
+      };
+      const newAchievements = checkAchievements(state, nextSnapshot);
+
       return {
         ...state,
         phase: 'resolution',
@@ -114,6 +147,9 @@ function reducer(state: GameState, action: GameAction): GameState {
         lastDeltas: deltas,
         minFood: Math.min(state.minFood, applied.resources.food),
         criticalHandled: state.criticalHandled + (state.event.critical ? 1 : 0),
+        achievements: [...state.achievements, ...newAchievements],
+        pending: [...state.pending, ...newAchievements],
+        alert: pickEmergency(applied.resources, applied.crew.health),
         history: [
           ...state.history,
           {
@@ -126,6 +162,12 @@ function reducer(state: GameState, action: GameAction): GameState {
         ],
       };
     }
+
+    case 'DISMISS_ALERT':
+      return { ...state, alert: null };
+
+    case 'DISMISS_ACHIEVEMENT':
+      return { ...state, pending: state.pending.slice(1) };
 
     case 'TOGGLE_SOUND':
       return { ...state, soundOn: !state.soundOn };
@@ -149,11 +191,14 @@ export function useGame() {
 
   const start = useCallback(() => dispatch({ type: 'START' }), []);
   const pickLocation = useCallback((location: Location) => dispatch({ type: 'PICK_LOCATION', location }), []);
+  const pickDifficulty = useCallback((d: Difficulty) => dispatch({ type: 'PICK_DIFFICULTY', difficulty: d }), []);
   const confirmSetup = useCallback(() => dispatch({ type: 'CONFIRM_SETUP' }), []);
   const proceed = useCallback(() => dispatch({ type: 'PROCEED' }), []);
   const pickChoice = useCallback((choice: Choice) => dispatch({ type: 'PICK_CHOICE', choice }), []);
   const setAlloc = useCallback((alloc: Allocation) => dispatch({ type: 'SET_ALLOC', alloc }), []);
   const runDay = useCallback(() => dispatch({ type: 'RUN_DAY' }), []);
+  const dismissAlert = useCallback(() => dispatch({ type: 'DISMISS_ALERT' }), []);
+  const dismissAchievement = useCallback(() => dispatch({ type: 'DISMISS_ACHIEVEMENT' }), []);
   const toggleSound = useCallback(() => dispatch({ type: 'TOGGLE_SOUND' }), []);
   const toggleBadge = useCallback(() => dispatch({ type: 'TOGGLE_BADGE' }), []);
   const closeBadge = useCallback(() => dispatch({ type: 'CLOSE_BADGE' }), []);
@@ -164,11 +209,14 @@ export function useGame() {
     emptyDeltas,
     start,
     pickLocation,
+    pickDifficulty,
     confirmSetup,
     proceed,
     pickChoice,
     setAlloc,
     runDay,
+    dismissAlert,
+    dismissAchievement,
     toggleSound,
     toggleBadge,
     closeBadge,

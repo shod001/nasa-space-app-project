@@ -18,8 +18,17 @@ const DEMO_EVENTS: FeedEvent[] = [
 /**
  * Live DONKI feed (NASA Open APIs). Falls back to a clearly-labeled demo feed
  * when the network is unavailable so the game keeps working offline.
+ * Responses are cached in memory for 10 minutes to stay within NASA rate limits.
  */
+
+let cache: { t: number; data: { live: boolean; source: string; events: FeedEvent[] } } | null = null;
+const TTL = 10 * 60 * 1000;
+
 export async function GET() {
+  if (cache && Date.now() - cache.t < TTL) {
+    return NextResponse.json(cache.data);
+  }
+
   const key = process.env.NASA_API_KEY || 'DEMO_KEY';
   const start = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10);
 
@@ -57,8 +66,12 @@ export async function GET() {
       })),
     ];
 
-    return NextResponse.json({ live: true, source: 'NASA DONKI', events });
+    const payload = { live: true, source: 'NASA DONKI', events } as const;
+    cache = { t: Date.now(), data: payload };
+    return NextResponse.json(payload);
   } catch {
-    return NextResponse.json({ live: false, source: 'DONKI Demo Feed', events: DEMO_EVENTS });
+    const payload = { live: false, source: 'DONKI Demo Feed', events: DEMO_EVENTS } as const;
+    cache = { t: Date.now(), data: payload };
+    return NextResponse.json(payload);
   }
 }

@@ -27,22 +27,22 @@ export default function DecisionCards({ event, resources, onPick, onOpenBadge }:
   return (
     <section aria-label="Decision cards" className="space-y-2.5">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h3 className="font-display text-lg text-white flex items-center gap-2">
-          {event.critical && <AlertTriangle className="w-5 h-5 text-rose-400 animate-pulse" aria-hidden />}
+        <h3 className="flex items-center gap-2 font-display text-xl text-white">
+          {event.critical && <AlertTriangle className="h-6 w-6 animate-pulse text-rose-400" aria-hidden />}
           {event.title}
         </h3>
         {event.badge && (
           <button
             onClick={onOpenBadge}
-            className="min-h-[36px] px-2.5 rounded-full text-[11px] font-bold text-emerald-300 bg-emerald-400/10 border border-emerald-400/30 hover:bg-emerald-400/20 flex items-center gap-1.5 active:scale-95 transition"
+            className="flex min-h-[40px] items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 text-xs font-bold text-emerald-300 transition active:scale-95 hover:bg-emerald-400/20"
           >
-            <Satellite className="w-3.5 h-3.5" aria-hidden />
+            <Satellite className="h-4 w-4" aria-hidden />
             {event.badge.system} data
           </button>
         )}
       </div>
 
-      <div className="space-y-2.5 max-h-[46vh] lg:max-h-[38vh] overflow-y-auto scrollbar-game pr-1">
+      <div className="max-h-[46vh] space-y-3 overflow-y-auto scrollbar-game pr-1 lg:max-h-[40vh]">
         {event.choices.map((c) => {
           const missingFuel = !!c.requires?.fuelCells && resources.fuelCells < c.requires.fuelCells;
           const missingPower = !!c.requires?.power && resources.power < c.requires.power;
@@ -56,36 +56,36 @@ export default function DecisionCards({ event, resources, onPick, onOpenBadge }:
                 onPick(c);
               }}
               disabled={disabled}
-              className="w-full text-left panel rounded-2xl p-3.5 hover:-translate-y-0.5 hover:border-fuchsia-300/40 active:scale-[0.98] transition-all disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              className="panel w-full rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5 hover:border-fuchsia-300/40 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="font-display text-[15px] text-white">{c.label}</span>
-                <span className={`shrink-0 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full border ${risk.cls}`}>
+                <span className="font-display text-lg font-semibold text-white">{c.label}</span>
+                <span className={`shrink-0 border px-2.5 py-1 text-xs font-black tracking-wider rounded-full ${risk.cls}`}>
                   {risk.label}
                 </span>
               </div>
-              <p className="text-xs text-violet-100/70 mt-1 leading-relaxed">{c.desc}</p>
-              <div className="flex flex-wrap gap-1.5 mt-2">
+              <p className="mt-1.5 text-sm leading-relaxed text-violet-100/80">{c.desc}</p>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
                 {c.chips.map((chip, i) => (
                   <span
                     key={i}
-                    className={`inline-flex items-center gap-1 text-[11px] font-semibold rounded-full bg-white/5 border border-white/10 px-2 py-0.5 ${chipTone(chip)}`}
+                    className={`inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-sm font-bold ${chipTone(chip)}`}
                   >
                     {chip.startsWith('+') ? (
-                      <TrendingUp className="w-3 h-3" aria-hidden />
+                      <TrendingUp className="h-3.5 w-3.5" aria-hidden />
                     ) : chip.startsWith('−') || chip.startsWith('-') ? (
-                      <TrendingDown className="w-3 h-3" aria-hidden />
+                      <TrendingDown className="h-3.5 w-3.5" aria-hidden />
                     ) : (
-                      <Minus className="w-3 h-3 opacity-60" aria-hidden />
+                      <Minus className="h-3.5 w-3.5 opacity-60" aria-hidden />
                     )}
                     {chip}
                   </span>
                 ))}
               </div>
               {disabled && (
-                <p className="mt-2 text-[11px] text-amber-300 flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5" aria-hidden />
-                  {missingFuel ? 'No backup fuel cells left!' : `Needs ${c.requires?.power}+ power in the battery!`}
+                <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-300">
+                  <Flame className="h-4 w-4" aria-hidden />
+                  {missingFuel ? 'No backup fuel cells left!' : `Needs ${c.requires?.power}+ power!`}
                 </p>
               )}
             </button>

@@ -1,0 +1,689 @@
+     1→'use client';
+     2→
+     3→import type { CSSProperties, ReactNode } from 'react';
+     4→
+     5→export type ModuleStatus = 'nominal' | 'warning' | 'critical';
+     6→
+     7→export interface BaseSceneProps {
+     8→  location: 'moon' | 'mars';
+     9→  day: number;
+    10→  statuses: {
+    11→    habitat: ModuleStatus; // ring around habitat dome (tracks oxygen)
+    12→    solar: ModuleStatus; // ring around solar array (power)
+    13→    greenhouse: ModuleStatus; // ring around greenhouse (food)
+    14→    lab: ModuleStatus; // ring around science lab (science activity)
+    15→    bunker: ModuleStatus; // ring around regolith bunker (shield)
+    16→  };
+    17→  roverState?: 'parked' | 'driving' | 'sheltered';
+    18→  sheltered?: boolean; // crew inside bunker: windows dim, astronauts walk over
+    19→  effects?: {
+    20→    dim?: number; // 0..1 -> black overlay opacity = dim * 0.55
+    21→    fog?: number; // 0..1 -> drifting blurred fog blobs
+    22→    radiation?: boolean; // red pulsing inset vignette
+    23→    storm?: boolean; // dust streaks + ochre tint
+    24→    night?: boolean; // darker sky tint
+    25→  };
+    26→}
+    27→
+    28→/* ------------------------------------------------------------------ */
+    29→/* Static data (module scope: deterministic, hydration-safe)           */
+    30→/* ------------------------------------------------------------------ */
+    31→
+    32→interface Palette {
+    33→  groundTop: string;
+    34→  groundBottom: string;
+    35→  crater: string;
+    36→  craterShadow: string;
+    37→  rock: string;
+    38→  horizon: string;
+    39→}
+    40→
+    41→const PALETTES: Record<'moon' | 'mars', Palette> = {
+    42→  moon: {
+    43→    groundTop: '#bcb6cb',
+    44→    groundBottom: '#9c95b2',
+    45→    crater: '#968eac',
+    46→    craterShadow: 'rgba(58, 48, 92, 0.35)',
+    47→    rock: '#8d85a1',
+    48→    horizon: 'rgba(255, 255, 255, 0.22)',
+    49→  },
+    50→  mars: {
+    51→    groundTop: '#a8532c',
+    52→    groundBottom: '#7e391b',
+    53→    crater: '#8a4222',
+    54→    craterShadow: 'rgba(50, 20, 8, 0.35)',
+    55→    rock: '#6f3318',
+    56→    horizon: 'rgba(255, 214, 165, 0.35)',
+    57→  },
+    58→};
+    59→
+    60→const CRATERS = [
+    61→  { left: '7%', top: '22%', w: '13%', h: '30%' },
+    62→  { left: '27%', top: '55%', w: '10%', h: '24%' },
+    63→  { left: '49%', top: '30%', w: '15%', h: '34%' },
+    64→  { left: '66%', top: '62%', w: '9%', h: '20%' },
+    65→  { left: '84%', top: '26%', w: '12%', h: '26%' },
+    66→];
+    67→
+    68→const ROCKS = [
+    69→  { left: '18%', top: '46%', w: '2.6%', h: '11%', rot: -8 },
+    70→  { left: '44%', top: '72%', w: '2%', h: '8%', rot: 12 },
+    71→  { left: '57.5%', top: '40%', w: '1.7%', h: '7%', rot: -4 },
+    72→  { left: '78%', top: '56%', w: '2.4%', h: '9%', rot: 7 },
+    73→];
+    74→
+    75→const DUST_STREAKS = [
+    76→  { top: 5, delay: -0.2 },
+    77→  { top: 14, delay: -1.1 },
+    78→  { top: 23, delay: -2 },
+    79→  { top: 31, delay: -0.6 },
+    80→  { top: 40, delay: -1.5 },
+    81→  { top: 48, delay: -2.4 },
+    82→  { top: 57, delay: -0.9 },
+    83→  { top: 66, delay: -1.8 },
+    84→  { top: 74, delay: -2.7 },
+    85→];
+    86→
+    87→/** Literal duration variants so the Tailwind JIT can emit them. */
+    88→const STREAK_DUR_CLASSES = [
+    89→  'animate-[dust-streak_2.4s_linear_infinite]',
+    90→  'animate-[dust-streak_3.1s_linear_infinite]',
+    91→  'animate-[dust-streak_3.8s_linear_infinite]',
+    92→  'animate-[dust-streak_4.5s_linear_infinite]',
+    93→] as const;
+    94→
+    95→const SKY_STARS = [
+    96→  { x: 90, y: 84, r: 1.6, o: 0.7 },
+    97→  { x: 150, y: 190, r: 1.2, o: 0.5 },
+    98→  { x: 235, y: 64, r: 1.8, o: 0.8 },
+    99→  { x: 305, y: 158, r: 1.3, o: 0.55 },
+   100→  { x: 392, y: 92, r: 1.5, o: 0.6 },
+   101→  { x: 470, y: 208, r: 1.2, o: 0.45 },
+   102→  { x: 540, y: 74, r: 1.7, o: 0.75 },
+   103→  { x: 645, y: 176, r: 1.3, o: 0.5 },
+   104→  { x: 706, y: 52, r: 1.4, o: 0.6 },
+   105→  { x: 872, y: 232, r: 1.2, o: 0.4 },
+   106→  { x: 958, y: 94, r: 1.5, o: 0.65 },
+   107→  { x: 1042, y: 178, r: 1.7, o: 0.7 },
+   108→  { x: 1122, y: 64, r: 1.3, o: 0.5 },
+   109→  { x: 204, y: 268, r: 1.2, o: 0.4 },
+   110→  { x: 524, y: 296, r: 1.4, o: 0.5 },
+   111→  { x: 982, y: 306, r: 1.3, o: 0.45 },
+   112→];
+   113→
+   114→const TWINKLE_STARS = [
+   115→  { x: 132, y: 124, r: 2, delay: '-0.4s' },
+   116→  { x: 352, y: 44, r: 2.2, delay: '-1.2s' },
+   117→  { x: 598, y: 114, r: 1.9, delay: '-2s' },
+   118→  { x: 760, y: 244, r: 2, delay: '-0.8s' },
+   119→  { x: 902, y: 54, r: 2.1, delay: '-1.7s' },
+   120→  { x: 1082, y: 236, r: 1.8, delay: '-0.2s' },
+   121→];
+   122→
+   123→const TWINKLE_SKY_CLASSES = [
+   124→  'animate-[twinkle_2.5s_ease-in-out_infinite]',
+   125→  'animate-[twinkle_3s_ease-in-out_infinite]',
+   126→  'animate-[twinkle_4s_ease-in-out_infinite]',
+   127→] as const;
+   128→
+   129→const RING_TONES: Record<ModuleStatus, string> = {
+   130→  nominal: 'border-emerald-400/80',
+   131→  warning: 'animate-[ring-pulse_1.6s_ease-in-out_infinite] border-amber-400',
+   132→  critical: 'animate-[ring-pulse_0.8s_ease-in-out_infinite] border-rose-500',
+   133→};
+   134→
+   135→/* ------------------------------------------------------------------ */
+   136→/* Sub-components                                                      */
+   137→/* ------------------------------------------------------------------ */
+   138→
+   139→function SkyBackdrop({ location }: { location: 'moon' | 'mars' }) {
+   140→  return (
+   141→    <svg
+   142→      aria-hidden
+   143→      viewBox="0 0 1200 675"
+   144→      preserveAspectRatio="xMidYMid slice"
+   145→      className="absolute inset-0 z-0 h-full w-full"
+   146→    >
+   147→      <defs>
+   148→        <linearGradient id="sky-grad" x1="0" y1="0" x2="0" y2="1">
+   149→          {location === 'moon' ? (
+   150→            <>
+   151→              <stop offset="0%" stopColor="#120b2e" />
+   152→              <stop offset="100%" stopColor="#2a1b52" />
+   153→            </>
+   154→          ) : (
+   155→            <>
+   156→              <stop offset="0%" stopColor="#5a2c14" />
+   157→              <stop offset="55%" stopColor="#9c4f21" />
+   158→              <stop offset="100%" stopColor="#d98a4a" />
+   159→            </>
+   160→          )}
+   161→        </linearGradient>
+   162→        <radialGradient id="earth-sea" cx="0.35" cy="0.3" r="0.95">
+   163→          <stop offset="0%" stopColor="#5eead4" />
+   164→          <stop offset="55%" stopColor="#2dd4bf" />
+   165→          <stop offset="100%" stopColor="#0d9488" />
+   166→        </radialGradient>
+   167→        <clipPath id="earth-clip">
+   168→          <circle cx="800" cy="128" r="46" />
+   169→        </clipPath>
+   170→      </defs>
+   171→
+   172→      <rect width="1200" height="675" fill="url(#sky-grad)" />
+   173→
+   174→      {location === 'moon' ? (
+   175→        <g>
+   176→          {SKY_STARS.map((s, i) => (
+   177→            <circle key={`sky-star-${i}`} cx={s.x} cy={s.y} r={s.r} fill="#ffffff" opacity={s.o} />
+   178→          ))}
+   179→          {TWINKLE_STARS.map((s, i) => (
+   180→            <circle
+   181→              key={`twinkle-star-${i}`}
+   182→              cx={s.x}
+   183→              cy={s.y}
+   184→              r={s.r}
+   185→              fill="#ffffff"
+   186→              className={TWINKLE_SKY_CLASSES[i % TWINKLE_SKY_CLASSES.length]}
+   187→              style={{ animationDelay: s.delay }}
+   188→            />
+   189→          ))}
+   190→
+   191→          {/* Cute planet Earth floating in the upper sky */}
+   192→          <g
+   193→            className="animate-[floaty_9s_ease-in-out_infinite]"
+   194→            style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+   195→          >
+   196→            <circle cx="800" cy="128" r="58" fill="#2dd4bf" opacity="0.12" />
+   197→            <circle cx="800" cy="128" r="46" fill="url(#earth-sea)" />
+   198→            <g clipPath="url(#earth-clip)">
+   199→              <ellipse cx="786" cy="112" rx="26" ry="12" fill="#0f766e" opacity="0.6" transform="rotate(-14 786 112)" />
+   200→              <ellipse cx="812" cy="142" rx="30" ry="11" fill="#115e59" opacity="0.55" transform="rotate(10 812 142)" />
+   201→              <ellipse cx="778" cy="152" rx="18" ry="8" fill="#0f766e" opacity="0.5" transform="rotate(-8 778 152)" />
+   202→            </g>
+   203→            <g fill="#ffffff" opacity="0.85">
+   204→              <ellipse cx="784" cy="122" rx="10" ry="4" />
+   205→              <ellipse cx="812" cy="134" rx="12" ry="4.5" />
+   206→              <ellipse cx="798" cy="148" rx="8" ry="3.5" />
+   207→            </g>
+   208→          </g>
+   209→        </g>
+   210→      ) : (
+   211→        <g>
+   212→          {/* faint dust haze bands */}
+   213→          <ellipse cx="600" cy="240" rx="720" ry="60" fill="#f0b07a" opacity="0.1" />
+   214→          <ellipse cx="600" cy="330" rx="760" ry="50" fill="#f6c48f" opacity="0.08" />
+   215→          <ellipse cx="600" cy="420" rx="800" ry="55" fill="#ffd9ae" opacity="0.1" />
+   216→          {/* tiny pale moon Phobos */}
+   217→          <circle cx="420" cy="105" r="15" fill="#ded5c8" />
+   218→          <circle cx="415" cy="101" r="4" fill="#c4b8a8" />
+   219→          <circle cx="426" cy="111" r="2.6" fill="#c9bda9" />
+   220→        </g>
+   221→      )}
+   222→    </svg>
+   223→  );
+   224→}
+   225→
+   226→function ModuleSlot({
+   227→  label,
+   228→  status,
+   229→  style,
+   230→  children,
+   231→}: {
+   232→  label: string;
+   233→  status: ModuleStatus;
+   234→  style: CSSProperties;
+   235→  children: ReactNode;
+   236→}) {
+   237→  return (
+   238→    <div className="absolute z-10" style={style}>
+   239→      <div className={`rounded-[2rem] border-2 border-dashed p-1.5 sm:p-2 ${RING_TONES[status]}`}>
+   240→        <div className={status === 'critical' ? 'animate-[shake_0.6s_infinite]' : undefined}>{children}</div>
+   241→        <div className="mt-1 flex justify-center">
+   242→          <span className="rounded-full bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/85">
+   243→            {label}
+   244→          </span>
+   245→        </div>
+   246→      </div>
+   247→    </div>
+   248→  );
+   249→}
+   250→
+   251→function HabitatModule({ crewInside }: { crewInside: boolean }) {
+   252→  const windowFill = crewInside ? '#64748b' : '#fbbf24';
+   253→  return (
+   254→    <svg aria-hidden viewBox="0 0 140 100" className="h-auto w-full">
+   255→      <defs>
+   256→        <linearGradient id="hab-shell" x1="0" y1="0" x2="0" y2="1">
+   257→          <stop offset="0%" stopColor="#f8fafc" />
+   258→          <stop offset="100%" stopColor="#c3cbd9" />
+   259→        </linearGradient>
+   260→        <radialGradient id="hab-glow">
+   261→          <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.85" />
+   262→          <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
+   263→        </radialGradient>
+   264→      </defs>
+   265→      {/* little legs */}
+   266→      <rect x="22" y="86" width="11" height="12" rx="3" fill="#64748b" />
+   267→      <rect x="107" y="86" width="11" height="12" rx="3" fill="#64748b" />
+   268→      {/* dome */}
+   269→      <path d="M14 88 A56 56 0 0 1 126 88 Z" fill="url(#hab-shell)" stroke="#8f9bb3" strokeWidth="2.5" />
+   270→      {/* antenna with blinking red tip */}
+   271→      <line x1="70" y1="33" x2="70" y2="13" stroke="#8f9bb3" strokeWidth="3" strokeLinecap="round" />
+   272→      <circle cx="70" cy="11" r="4" fill="#f87171" className="animate-[blink_1.4s_infinite]" />
+   273→      {/* glowing round windows (dim + steady when crew is sheltered) */}
+   274→      <circle
+   275→        cx="47"
+   276→        cy="63"
+   277→        r="15"
+   278→        fill="url(#hab-glow)"
+   279→        className={`transition-opacity duration-700 ${crewInside ? 'opacity-0' : 'opacity-70'}`}
+   280→      />
+   281→      <circle
+   282→        cx="93"
+   283→        cy="63"
+   284→        r="15"
+   285→        fill="url(#hab-glow)"
+   286→        className={`transition-opacity duration-700 ${crewInside ? 'opacity-0' : 'opacity-70'}`}
+   287→      />
+   288→      <circle
+   289→        cx="47"
+   290→        cy="63"
+   291→        r="10"
+   292→        fill={windowFill}
+   293→        stroke="#e2e8f0"
+   294→        strokeWidth="3"
+   295→        className={`transition-colors duration-700 ${crewInside ? undefined : 'animate-[blink_3s_ease-in-out_infinite]'}`}
+   296→      />
+   297→      <circle
+   298→        cx="93"
+   299→        cy="63"
+   300→        r="10"
+   301→        fill={windowFill}
+   302→        stroke="#e2e8f0"
+   303→        strokeWidth="3"
+   304→        className={`transition-colors duration-700 ${crewInside ? undefined : 'animate-[blink_3s_ease-in-out_infinite]'}`}
+   305→      />
+   306→      {/* door */}
+   307→      <rect x="61" y="64" width="18" height="24" rx="8" fill="#475569" stroke="#94a3b8" strokeWidth="2" />
+   308→    </svg>
+   309→  );
+   310→}
+   311→
+   312→function SolarArray() {
+   313→  const panels = [
+   314→    { y: 12, tilt: -7 },
+   315→    { y: 40, tilt: 5 },
+   316→    { y: 68, tilt: -7 },
+   317→  ];
+   318→  return (
+   319→    <svg aria-hidden viewBox="0 0 140 122" className="h-auto w-full">
+   320→      <defs>
+   321→        <linearGradient id="sol-cell" x1="0" y1="0" x2="0" y2="1">
+   322→          <stop offset="0%" stopColor="#3730a3" />
+   323→          <stop offset="100%" stopColor="#1e1b4b" />
+   324→        </linearGradient>
+   325→      </defs>
+   326→      {/* pole, foot and legs */}
+   327→      <rect x="52" y="104" width="36" height="9" rx="4" fill="#64748b" />
+   328→      <rect x="65" y="50" width="10" height="58" rx="3" fill="#6b7280" />
+   329→      <rect x="30" y="110" width="12" height="10" rx="3" fill="#64748b" />
+   330→      <rect x="98" y="110" width="12" height="10" rx="3" fill="#64748b" />
+   331→      {/* three tilted panels, gently rocking to track the sun */}
+   332→      <g
+   333→        className="animate-[panel-tilt_6s_ease-in-out_infinite]"
+   334→        style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+   335→      >
+   336→        {panels.map((p) => (
+   337→          <g key={p.y} transform={`rotate(${p.tilt} 70 ${p.y + 9})`}>
+   338→            <rect x="24" y={p.y} width="92" height="18" rx="3" fill="url(#sol-cell)" stroke="#4c1d95" strokeWidth="1.5" />
+   339→            {[1, 2, 3, 4, 5].map((k) => (
+   340→              <line
+   341→                key={k}
+   342→                x1={24 + k * (92 / 6)}
+   343→                y1={p.y + 2}
+   344→                x2={24 + k * (92 / 6)}
+   345→                y2={p.y + 16}
+   346→                stroke="#a5b4fc"
+   347→                strokeWidth="1"
+   348→                opacity="0.7"
+   349→              />
+   350→            ))}
+   351→            <line x1="26" y1={p.y + 9} x2="114" y2={p.y + 9} stroke="#a5b4fc" strokeWidth="1" opacity="0.7" />
+   352→          </g>
+   353→        ))}
+   354→      </g>
+   355→    </svg>
+   356→  );
+   357→}
+   358→
+   359→const PLANTS = [
+   360→  { x: 42, h: 18, delay: 0 },
+   361→  { x: 65, h: 24, delay: 0.7 },
+   362→  { x: 88, h: 15, delay: 1.3 },
+   363→];
+   364→
+   365→function Greenhouse() {
+   366→  return (
+   367→    <svg aria-hidden viewBox="0 0 130 100" className="h-auto w-full">
+   368→      <defs>
+   369→        <linearGradient id="gh-glass" x1="0" y1="0" x2="0" y2="1">
+   370→          <stop offset="0%" stopColor="#ecfdf5" stopOpacity="0.32" />
+   371→          <stop offset="100%" stopColor="#34d399" stopOpacity="0.5" />
+   372→        </linearGradient>
+   373→      </defs>
+   374→      {/* little legs */}
+   375→      <rect x="26" y="86" width="10" height="12" rx="3" fill="#64748b" />
+   376→      <rect x="94" y="86" width="10" height="12" rx="3" fill="#64748b" />
+   377→      {/* swaying plants */}
+   378→      {PLANTS.map((p) => (
+   379→        <g
+   380→          key={p.x}
+   381→          className="animate-[sway_4s_ease-in-out_infinite]"
+   382→          style={{ transformBox: 'fill-box', transformOrigin: '50% 100%', animationDelay: `${p.delay}s` }}
+   383→        >
+   384→          <rect x={p.x - 9} y={79} width="18" height="7" rx="2" fill="#92400e" />
+   385→          <line x1={p.x} y1={79} x2={p.x} y2={79 - p.h} stroke="#15803d" strokeWidth="3" strokeLinecap="round" />
+   386→          <ellipse
+   387→            cx={p.x - 7}
+   388→            cy={76 - p.h * 0.45}
+   389→            rx="7"
+   390→            ry="3.4"
+   391→            fill="#22c55e"
+   392→            transform={`rotate(-24 ${p.x - 7} ${76 - p.h * 0.45})`}
+   393→          />
+   394→          <ellipse
+   395→            cx={p.x + 7}
+   396→            cy={74 - p.h * 0.45}
+   397→            rx="7"
+   398→            ry="3.4"
+   399→            fill="#16a34a"
+   400→            transform={`rotate(24 ${p.x + 7} ${74 - p.h * 0.45})`}
+   401→          />
+   402→          <circle cx={p.x} cy={75 - p.h} r="4.2" fill="#4ade80" />
+   403→        </g>
+   404→      ))}
+   405→      {/* clear glass dome */}
+   406→      <path d="M14 88 A51 51 0 0 1 116 88 Z" fill="url(#gh-glass)" stroke="#6ee7b7" strokeWidth="2.5" />
+   407→      <line x1="65" y1="37" x2="65" y2="88" stroke="#a7f3d0" strokeWidth="1.5" opacity="0.8" />
+   408→      <path d="M28 72 Q65 58 102 72" fill="none" stroke="#a7f3d0" strokeWidth="1.5" opacity="0.8" />
+   409→    </svg>
+   410→  );
+   411→}
+   412→
+   413→function ScienceLab({ crewInside }: { crewInside: boolean }) {
+   414→  const glassFill = crewInside ? '#64748b' : '#7dd3fc';
+   415→  return (
+   416→    <svg aria-hidden viewBox="0 0 130 112" className="h-auto w-full">
+   417→      <defs>
+   418→        <linearGradient id="lab-shell" x1="0" y1="0" x2="0" y2="1">
+   419→          <stop offset="0%" stopColor="#f1f5f9" />
+   420→          <stop offset="100%" stopColor="#c3cbd9" />
+   421→        </linearGradient>
+   422→        <radialGradient id="lab-glow">
+   423→          <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.8" />
+   424→          <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
+   425→        </radialGradient>
+   426→      </defs>
+   427→      {/* little legs */}
+   428→      <rect x="30" y="96" width="11" height="14" rx="3" fill="#64748b" />
+   429→      <rect x="89" y="96" width="11" height="14" rx="3" fill="#64748b" />
+   430→      {/* rotating radar dish */}
+   431→      <rect x="61" y="46" width="5" height="14" fill="#64748b" />
+   432→      <g
+   433→        className="animate-[spin-slow_9s_linear_infinite]"
+   434→        style={{ transformBox: 'view-box', transformOrigin: '63.5px 42px' }}
+   435→      >
+   436→        <path d="M47.5 42 A16 7 0 0 1 79.5 42 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1.5" />
+   437→        <line x1="63.5" y1="42" x2="63.5" y2="27" stroke="#94a3b8" strokeWidth="2" />
+   438→        <circle cx="63.5" cy="25" r="3" fill="#fbbf24" />
+   439→        <circle cx="63.5" cy="42" r="4" fill="#475569" />
+   440→      </g>
+   441→      {/* box module body */}
+   442→      <rect x="18" y="58" width="94" height="40" rx="10" fill="url(#lab-shell)" stroke="#8f9bb3" strokeWidth="2.5" />
+   443→      <rect x="19" y="58" width="92" height="11" rx="5.5" fill="#a78bfa" />
+   444→      <circle
+   445→        cx="39.5"
+   446→        cy="81"
+   447→        r="14"
+   448→        fill="url(#lab-glow)"
+   449→        className={`transition-opacity duration-700 ${crewInside ? 'opacity-0' : 'opacity-70'}`}
+   450→      />
+   451→      <rect
+   452→        x="30"
+   453→        y="74"
+   454→        width="19"
+   455→        height="15"
+   456→        rx="4"
+   457→        fill={glassFill}
+   458→        stroke="#e2e8f0"
+   459→        strokeWidth="2.5"
+   460→        className="transition-colors duration-700"
+   461→      />
+   462→      <rect x="88" y="74" width="15" height="24" rx="6" fill="#475569" stroke="#94a3b8" strokeWidth="2" />
+   463→    </svg>
+   464→  );
+   465→}
+   466→
+   467→function BunkerModule() {
+   468→  return (
+   469→    <svg aria-hidden viewBox="0 0 150 96" className="h-auto w-full">
+   470→      <defs>
+   471→        <pattern id="hz-stripes" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+   472→          <rect width="14" height="14" fill="#facc15" />
+   473→          <rect width="7" height="14" fill="#18181b" />
+   474→        </pattern>
+   475→        <linearGradient id="bunker-shell" x1="0" y1="0" x2="0" y2="1">
+   476→          <stop offset="0%" stopColor="#b6b3c4" />
+   477→          <stop offset="100%" stopColor="#7c7891" />
+   478→        </linearGradient>
+   479→      </defs>
+   480→      {/* little legs */}
+   481→      <rect x="16" y="84" width="13" height="10" rx="3" fill="#57534e" />
+   482→      <rect x="121" y="84" width="13" height="10" rx="3" fill="#57534e" />
+   483→      {/* regolith mound */}
+   484→      <path d="M8 88 Q18 38 75 36 Q132 38 142 88 Z" fill="url(#bunker-shell)" stroke="#5f5b73" strokeWidth="2.5" />
+   485→      {/* hazard stripe */}
+   486→      <rect x="44" y="56" width="62" height="11" rx="3" fill="url(#hz-stripes)" stroke="#3f3f46" strokeWidth="1.5" />
+   487→      {/* round airlock door */}
+   488→      <circle cx="75" cy="74" r="13.5" fill="#3f3f46" stroke="#d4d4d8" strokeWidth="3" />
+   489→      <circle cx="75" cy="74" r="7" fill="#52525b" />
+   490→      <circle cx="75" cy="74" r="2.4" fill="#fde047" />
+   491→      {/* vent */}
+   492→      <rect x="108" y="60" width="14" height="9" rx="2" fill="#57534e" />
+   493→      <line x1="111" y1="63" x2="119" y2="63" stroke="#a8a29e" strokeWidth="1.4" />
+   494→      <line x1="111" y1="66" x2="119" y2="66" stroke="#a8a29e" strokeWidth="1.4" />
+   495→    </svg>
+   496→  );
+   497→}
+   498→
+   499→function Rover({ bob }: { bob: boolean }) {
+   500→  return (
+   501→    <svg
+   502→      aria-hidden
+   503→      viewBox="0 0 150 100"
+   504→      className={`h-auto w-full ${bob ? 'animate-[rover-bob_2.4s_ease-in-out_infinite]' : ''}`}
+   505→    >
+   506→      <defs>
+   507→        <linearGradient id="rov-body" x1="0" y1="0" x2="0" y2="1">
+   508→          <stop offset="0%" stopColor="#f8fafc" />
+   509→          <stop offset="100%" stopColor="#c3cbd9" />
+   510→        </linearGradient>
+   511→      </defs>
+   512→      {/* flag + antenna */}
+   513→      <line x1="62" y1="30" x2="62" y2="10" stroke="#71717a" strokeWidth="2.5" />
+   514→      <path d="M62 10 L80 14 L62 18 Z" fill="#fb7185" />
+   515→      <line x1="116" y1="30" x2="123" y2="12" stroke="#71717a" strokeWidth="2" />
+   516→      <circle cx="123" cy="11" r="3.4" fill="#fbbf24" className="animate-[blink_2s_ease-in-out_infinite]" />
+   517→      {/* three chunky wheels */}
+   518→      {[38, 75, 112].map((cx) => (
+   519→        <g key={cx}>
+   520→          <circle cx={cx} cy="79" r="14.5" fill="#27272a" />
+   521→          <circle cx={cx} cy="79" r="6" fill="#52525b" />
+   522→          <circle cx={cx} cy="79" r="2" fill="#a1a1aa" />
+   523→        </g>
+   524→      ))}
+   525→      {/* body */}
+   526→      <rect x="16" y="30" width="118" height="35" rx="12" fill="url(#rov-body)" stroke="#8f9bb3" strokeWidth="2.5" />
+   527→      <rect x="16" y="47" width="118" height="7" fill="#8b5cf6" opacity="0.9" />
+   528→      <rect x="26" y="34" width="26" height="13" rx="5" fill="#7dd3fc" stroke="#e0f2fe" strokeWidth="2" />
+   529→      <rect x="98" y="20" width="26" height="12" rx="4" fill="#a78bfa" stroke="#7c3aed" strokeWidth="1.5" />
+   530→      <circle cx="21" cy="57" r="3.2" fill="#fde047" />
+   531→    </svg>
+   532→  );
+   533→}
+   534→
+   535→/* ------------------------------------------------------------------ */
+   536→/* Main scene                                                          */
+   537→/* ------------------------------------------------------------------ */
+   538→
+   539→export default function BaseScene({
+   540→  location,
+   541→  day,
+   542→  statuses,
+   543→  roverState = 'parked',
+   544→  sheltered = false,
+   545→  effects = {},
+   546→}: BaseSceneProps) {
+   547→  const { dim = 0, fog = 0, radiation = false, storm = false, night = false } = effects;
+   548→  const palette = PALETTES[location];
+   549→
+   550→  return (
+   551→    <div
+   552→      className="relative aspect-video h-full w-full select-none overflow-hidden rounded-3xl border border-violet-400/20 bg-[#0c0918]"
+   553→    >
+   554→      <SkyBackdrop location={location} />
+   555→
+   556→      {/* distant mesa (mars only), rooted at the horizon */}
+   557→      {location === 'mars' && (
+   558→        <div
+   559→          aria-hidden
+   560→          className="absolute bottom-[34.6%] left-[56%] z-[1] h-[9%] w-[13%] bg-gradient-to-b from-[#b06034] to-[#8a3f1e] [clip-path:polygon(6%_100%,20%_0,80%_0,94%_100%)]"
+   561→        />
+   562→      )}
+   563→
+   564→      {/* ground = bottom 35% */}
+   565→      <div
+   566→        aria-hidden
+   567→        className="absolute inset-x-0 bottom-0 z-[2] h-[35%]"
+   568→        style={{ background: `linear-gradient(180deg, ${palette.groundTop} 0%, ${palette.groundBottom} 100%)` }}
+   569→      >
+   570→        <div
+   571→          className="absolute inset-x-0 top-0 h-[8px]"
+   572→          style={{ background: `linear-gradient(180deg, ${palette.horizon}, transparent)` }}
+   573→        />
+   574→        {CRATERS.map((c, i) => (
+   575→          <div
+   576→            key={`crater-${i}`}
+   577→            className="absolute rounded-[50%]"
+   578→            style={{
+   579→              left: c.left,
+   580→              top: c.top,
+   581→              width: c.w,
+   582→              height: c.h,
+   583→              background: palette.crater,
+   584→              boxShadow: `inset 0 5px 10px ${palette.craterShadow}`,
+   585→            }}
+   586→          />
+   587→        ))}
+   588→        {ROCKS.map((r, i) => (
+   589→          <div
+   590→            key={`rock-${i}`}
+   591→            className="absolute rounded-[45%]"
+   592→            style={{
+   593→              left: r.left,
+   594→              top: r.top,
+   595→              width: r.w,
+   596→              height: r.h,
+   597→              background: palette.rock,
+   598→              transform: `rotate(${r.rot}deg)`,
+   599→            }}
+   600→          />
+   601→        ))}
+   602→      </div>
+   603→
+   604→      {/* modules with status rings */}
+   605→      <ModuleSlot label="SOLAR" status={statuses.solar} style={{ left: '2.5%', width: '15%', bottom: '30%' }}>
+   606→        <SolarArray />
+   607→      </ModuleSlot>
+   608→      <ModuleSlot label="LAB" status={statuses.lab} style={{ left: '21%', width: '12.5%', bottom: '29.5%' }}>
+   609→        <ScienceLab crewInside={sheltered} />
+   610→      </ModuleSlot>
+   611→      <ModuleSlot label="HABITAT" status={statuses.habitat} style={{ left: '41%', width: '18%', bottom: '30%' }}>
+   612→        <HabitatModule crewInside={sheltered} />
+   613→      </ModuleSlot>
+   614→      <ModuleSlot
+   615→        label="GREENHOUSE"
+   616→        status={statuses.greenhouse}
+   617→        style={{ left: '62.5%', width: '13.5%', bottom: '30%' }}
+   618→      >
+   619→        <Greenhouse />
+   620→      </ModuleSlot>
+   621→      <ModuleSlot label="BUNKER" status={statuses.bunker} style={{ left: '80%', width: '16%', bottom: '28.5%' }}>
+   622→        <BunkerModule />
+   623→      </ModuleSlot>
+   624→
+   625→      {/* rover: parked between habitat and greenhouse, drives across, or shelters by the bunker */}
+   626→      <div aria-hidden className="absolute inset-x-0 bottom-[26%] z-[12]">
+   627→        <div className={roverState === 'driving' ? 'w-full animate-[drive_16s_linear_infinite]' : 'w-full'}>
+   628→          <div className={`relative w-[11%] ${roverState === 'sheltered' ? 'ml-[70%]' : 'ml-[54%]'}`}>
+   629→            <Rover bob={roverState === 'parked'} />
+   630→          </div>
+   631→        </div>
+   632→      </div>
+   633→
+   634→      {/* tiny astronauts walking from habitat to the bunker when sheltered */}
+   635→      <div aria-hidden className="pointer-events-none absolute inset-0 z-[14]">
+   636→        {[0, 1].map((i) => (
+   637→          <div
+   638→            key={`astro-${i}`}
+   639→            className="absolute h-[18px] w-[13px] rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.35)] transition-all duration-1000 ease-in-out"
+   640→            style={{
+   641→              bottom: i === 0 ? '29.5%' : '28.8%',
+   642→              left: sheltered ? `${72.5 + i * 3.5}%` : `${45.5 + i * 2.5}%`,
+   643→              opacity: sheltered ? 1 : 0,
+   644→              transitionDelay: `${i * 0.18}s`,
+   645→            }}
+   646→          >
+   647→            <div className="absolute left-1/2 top-[3px] h-[5px] w-[7px] -translate-x-1/2 rounded-full bg-amber-300" />
+   648→            <div className="absolute bottom-[1px] left-[2px] h-[3px] w-[4px] rounded-[1px] bg-slate-400" />
+   649→            <div className="absolute bottom-[1px] right-[2px] h-[3px] w-[4px] rounded-[1px] bg-slate-400" />
+   650→          </div>
+   651→        ))}
+   652→      </div>
+   653→
+   654→      {/* effect overlays */}
+   655→      <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-3xl">
+   656→        {radiation && (
+   657→          <div className="absolute inset-0 animate-[ring-pulse_1.2s_ease-in-out_infinite] shadow-[inset_0_0_80px_rgba(244,63,94,0.55)]" />
+   658→        )}
+   659→        {storm && (
+   660→          <div className="absolute inset-0">
+   661→            {DUST_STREAKS.map((s, i) => (
+   662→              <div
+   663→                key={`streak-${i}`}
+   664→                className={`absolute left-0 h-[3px] w-[22%] rounded-full bg-[#f1d3ad]/60 ${STREAK_DUR_CLASSES[i % STREAK_DUR_CLASSES.length]}`}
+   665→                style={{ top: `${s.top}%`, animationDelay: `${s.delay}s` }}
+   666→              />
+   667→            ))}
+   668→            <div className="absolute inset-0 bg-[#c47a3a]/20" />
+   669→          </div>
+   670→        )}
+   671→        <div className="absolute inset-0" style={{ opacity: fog * 0.7, transition: 'opacity 0.8s ease' }}>
+   672→          <div className="absolute -left-[12%] bottom-[8%] h-[46%] w-[58%] animate-[fog-drift_10s_ease-in-out_infinite] rounded-full bg-cyan-100/40 blur-xl" />
+   673→          <div
+   674→            className="absolute -right-[10%] top-[12%] h-[42%] w-[52%] animate-[fog-drift_10s_ease-in-out_infinite] rounded-full bg-white/50 blur-xl"
+   675→            style={{ animationDelay: '-5s' }}
+   676→          />
+   677→        </div>
+   678→        {night && <div className="absolute inset-0 bg-black/45" />}
+   679→        <div className="absolute inset-0 bg-black transition-opacity duration-700" style={{ opacity: dim * 0.55 }} />
+   680→      </div>
+   681→
+   682→      {/* day chip */}
+   683→      <div className="absolute left-3 top-3 z-30 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold tracking-wide text-white/90">
+   684→        {location === 'mars' ? 'SOL' : 'DAY'} {day}
+   685→      </div>
+   686→    </div>
+   687→  );
+   688→}
+   689→

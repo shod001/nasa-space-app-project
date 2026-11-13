@@ -1,11 +1,15 @@
 import {
+  ACHIEVEMENTS,
+  DIFFICULTIES,
   emptyDeltas,
-  SCIENCE_GOAL,
   TOTAL_DAYS,
+  type Achievement,
   type Allocation,
   type BadgeEarned,
   type Choice,
+  type Difficulty,
   type Deltas,
+  type EmergencyKind,
   type FinalResult,
   type GameEvent,
   type GameState,
@@ -20,15 +24,16 @@ export interface DayForecast {
   solar: number;
 }
 
-export function solarFor(location: Location, flags: string[]): number {
+export function solarFor(location: Location, flags: string[], difficulty: Difficulty = 'normal'): number {
   let solar = location === 'moon' ? 24 : 19;
   if (flags.includes('dust')) solar *= 0.4;
   if (flags.includes('dim')) solar *= 0.85;
-  return solar;
+  return solar * DIFFICULTIES[difficulty].solarMul;
 }
 
 export interface ResolveInput {
   location: Location;
+  difficulty: Difficulty;
   resources: ResourceState;
   crewHealth: number;
   crewMorale: number;
@@ -44,23 +49,24 @@ export interface ResolveOutput {
 
 /** Resolve one full mission day: base systems + energy cubes + event choice effects. */
 export function resolveDay(input: ResolveInput): ResolveOutput {
-  const { location, resources, crewHealth, crewMorale, event, choice, allocation } = input;
+  const { location, difficulty, resources, crewHealth, crewMorale, event, choice, allocation } = input;
+  const cfg = DIFFICULTIES[difficulty];
   const flags = choice.flags ?? [];
   const d = emptyDeltas();
   const notes: string[] = [];
 
-  // --- power: solar generation vs base consumption ---
-  const solar = solarFor(location, flags);
-  d.power = round(solar - 12);
+  // --- power: sunshine made vs base used ---
+  const solar = solarFor(location, flags, difficulty);
+  d.power = round(solar - 12 * cfg.drainMul);
 
-  // --- life support cubes ---
-  d.oxygen = round(-7 + allocation.life * 2.4);
+  // --- life support cubes (drain scales with difficulty, gains stay fair) ---
+  d.oxygen = round(-7 * cfg.drainMul + allocation.life * 2.4);
 
   // --- greenhouse cubes ---
-  d.food = round(-6 + allocation.green * 1.9);
+  d.food = round(-6 * cfg.drainMul + allocation.green * 1.9);
 
   // --- shield cubes ---
-  d.shield = round(-2 + allocation.shield * 3);
+  d.shield = round(-2 * cfg.drainMul + allocation.shield * 3);
 
   // --- science cubes ---
   const sheltered = flags.includes('sheltered');
@@ -82,48 +88,47 @@ export function resolveDay(input: ResolveInput): ResolveOutput {
     }
   }
 
-  // --- radiation exposure ---
+  // --- bad sun rays hitting the crew ---
   if (flags.includes('rad') && event.radIntensity) {
     let factor = (resources.shield / 100) * 0.6 + allocation.shield * 0.04;
     if (flags.includes('emergencyShield')) factor += 0.5;
     factor = Math.min(factor, 0.92);
-    const dmg = Math.round(event.radIntensity * (1 - factor));
+    const dmg = Math.round(event.radIntensity * (1 - factor) * cfg.damageMul);
     d.health -= dmg;
-    notes.push(`Radiation exposure: -${dmg} crew health (shields blocked ${Math.round(factor * 100)}%)`);
+    notes.push(`Bad sun rays hit the crew: -${dmg} health (shields blocked ${Math.round(factor * 100)}%)`);
   }
 
-  // --- predicted post values for scarcity checks ---
+  // --- check for empty supplies after today ---
   const postOxy = resources.oxygen + d.oxygen;
   const postFood = resources.food + d.food;
   const postPower = resources.power + d.power;
 
   if (postOxy <= 0) {
-    d.health -= 8;
+    d.health -= Math.round(8 * cfg.damageMul);
     d.morale -= 6;
-    notes.push('Air ran out! Emergency oxygen candles saved the day (health hit).');
+    notes.push('The air ran out! Backup oxygen saved the day (crew got hurt).');
   }
   if (postFood <= 0) {
-    d.health -= 4;
+    d.health -= Math.round(4 * cfg.damageMul);
     d.morale -= 6;
-    notes.push('Food ran out — ration bars to the rescue (crew grumpy).');
+    notes.push('The food ran out! Snack bars saved the day (crew grumpy).');
   }
   if (postPower <= 0) {
-    d.power += 0;
     d.oxygen -= 4;
     d.morale -= 5;
-    notes.push('Blackout! Batteries hit zero and life support sputtered.');
+    notes.push('Blackout! The power hit zero and machines sputtered.');
   }
 
   if (resources.oxygen < 25 || postOxy < 25) {
-    d.health -= 6;
-    notes.push('Low oxygen all day — crew breathing hard.');
+    d.health -= Math.round(6 * cfg.damageMul);
+    notes.push('Low air all day — the crew is breathing hard.');
   }
   if (resources.food < 20 || postFood < 20) {
-    d.health -= 5;
-    notes.push('Food stores critical — hungry crew.');
+    d.health -= Math.round(5 * cfg.damageMul);
+    notes.push('Low food all day — hungry crew.');
   }
 
-  // --- morale dynamics ---
+  // --- how the crew feels ---
   d.morale += -1;
   if (postFood > 60) d.morale += 2;
   if (postFood < 25) d.morale -= 3;
@@ -131,7 +136,7 @@ export function resolveDay(input: ResolveInput): ResolveOutput {
   if (postPower < 15) d.morale -= 3;
   if (d.science >= 15) d.morale += 1;
 
-  // --- natural recovery ---
+  // --- bodies rest when things are okay ---
   if (postOxy >= 50 && postFood >= 50 && crewHealth < 100) {
     d.health += 2;
   }
@@ -196,15 +201,62 @@ export function sceneStatuses(state: GameState): SceneStatuses {
   };
 }
 
+/** Pick the single most urgent emergency to shout about on the big red screen. */
+export function pickEmergency(resources: ResourceState, health: number): EmergencyKind | null {
+  if (health <= 30) return 'health';
+  if (resources.oxygen <= 25) return 'oxygen';
+  if (resources.food <= 25) return 'food';
+  if (resources.power <= 25) return 'power';
+  if (resources.shield <= 15) return 'shield';
+  return null;
+}
+
+/** Look at a finished day and list any NEW achievements the player just earned. */
+export function checkAchievements(
+  prev: GameState,
+  next: {
+    day: number;
+    resources: ResourceState;
+    crew: { health: number; morale: number };
+    science: number;
+    goal: number;
+  },
+): Achievement[] {
+  const out: Achievement[] = [];
+  const has = (id: string) => prev.achievements.some((a) => a.id === id);
+  const push = (id: string) => {
+    if (!has(id)) out.push(ACHIEVEMENTS[id]);
+  };
+
+  push('first');
+  if (next.day >= Math.ceil(TOTAL_DAYS / 2)) push('half');
+  if (next.science >= 100) push('sci100');
+  if (next.science >= 250) push('sci250');
+  if (next.science >= next.goal) push('goal');
+  if ((prev.event?.id === 'm5' || prev.event?.id === 'ms5') && next.crew.health > 0) push('flare');
+  if (prev.event?.id === 'ms10') push('storm');
+  if (prev.resources.shield < 100 && next.resources.shield >= 100) push('shield');
+  if (next.crew.morale >= 90) push('happy');
+  if (
+    next.resources.power >= 60 &&
+    next.resources.oxygen >= 60 &&
+    next.resources.food >= 60 &&
+    next.resources.shield >= 60
+  ) {
+    push('green');
+  }
+  return out;
+}
+
 export function endingFor(state: GameState): FinalResult {
-  const { crew, science, criticalHandled, minFood, day } = state;
+  const { crew, science, criticalHandled, minFood, day, goal } = state;
 
   if (crew.health <= 0) {
     return {
       tier: 'abort',
-      title: 'Mission Abort — Crew Rescued',
+      title: 'Mission Stop — Crew Saved',
       blurb:
-        'The crew got too hurt to continue, but the rescue ship brought everyone home safe. Every astronaut learns from tough missions!',
+        'The crew got too hurt to go on, so a rescue ship brought everyone home safe. Every astronaut learns from hard days!',
       badges: computeBadges(state, true),
       flareDay: findFlareDay(state),
     };
@@ -215,34 +267,34 @@ export function endingFor(state: GameState): FinalResult {
     return {
       tier: 'fail',
       title: 'Mission Ended Early',
-      blurb: 'The mission wrapped up sooner than planned — but science never stops. Ready for one more try?',
+      blurb: 'The mission stopped sooner than planned. Science never stops — ready to try again?',
       badges: computeBadges(state, true),
       flareDay: findFlareDay(state),
     };
   }
 
-  if (science >= SCIENCE_GOAL) {
+  if (science >= goal) {
     return {
       tier: 'success',
       title: 'MISSION SUCCESS!',
-      blurb: `Outstanding, Commander! ${science} science points collected and the crew is coming home healthy. Mission Control is throwing you a party!`,
+      blurb: `Amazing, Commander! You collected ${science} science points and your crew is safe. Mission Control is having a party for you!`,
       badges: computeBadges(state, false),
       flareDay: findFlareDay(state),
     };
   }
-  if (science >= 200) {
+  if (science >= Math.round(goal * 0.55)) {
     return {
       tier: 'partial',
-      title: 'Solid Mission',
-      blurb: `Good flying, Commander! ${science} science points gathered. A little more power into the lab next time and you'll smash the goal of ${SCIENCE_GOAL}!`,
+      title: 'Great Mission!',
+      blurb: `Nice flying, Commander! ${science} science points collected. Give the Lab more power next time to reach ${goal}!`,
       badges: computeBadges(state, false),
       flareDay: findFlareDay(state),
     };
   }
   return {
     tier: 'fail',
-    title: 'Learning Experience',
-    blurb: `Only ${science} science points this time. Try keeping oxygen and power steady while the lab works — balancing is the real astronaut skill!`,
+    title: 'Good Try, Explorer!',
+    blurb: `You got ${science} science points. Try keeping air and power steady while the Lab works. Balancing is the astronaut skill!`,
     badges: computeBadges(state, false),
     flareDay: findFlareDay(state),
   };
@@ -255,26 +307,26 @@ export function findFlareDay(state: GameState): number | null {
 
 export function computeBadges(state: GameState, earlyEnd: boolean): BadgeEarned[] {
   const badges: BadgeEarned[] = [];
-  const { science, crew, criticalHandled, minFood } = state;
+  const { science, crew, criticalHandled, minFood, day, goal } = state;
 
   badges.push({
     id: 'survivor',
     name: 'Mission Survivor',
-    desc: 'Kept the crew alive through the whole mission.',
+    desc: 'You kept the crew alive. Great work!',
     emoji: '🏁',
   });
-  if (science >= 550) {
+  if (science >= Math.round(goal * 1.45)) {
     badges.push({
       id: 'cosmic',
-      name: 'Cosmic Scientist',
-      desc: 'Over 550 science points! Legendary research run.',
+      name: 'Space Scientist',
+      desc: 'So much science! A legendary research run.',
       emoji: '🌌',
     });
-  } else if (science >= SCIENCE_GOAL) {
+  } else if (science >= goal) {
     badges.push({
       id: 'planner',
       name: 'Master Planner',
-      desc: `Reached ${SCIENCE_GOAL}+ science while balancing the whole base.`,
+      desc: `Reached ${goal}+ science points. Big brain!`,
       emoji: '🧠',
     });
   }
@@ -282,31 +334,31 @@ export function computeBadges(state: GameState, earlyEnd: boolean): BadgeEarned[
     badges.push({
       id: 'champion',
       name: 'Crew Champion',
-      desc: 'Kept both health and morale sky-high.',
+      desc: 'Kept the crew healthy and happy.',
       emoji: '💛',
     });
   }
   if (criticalHandled >= 3 && crew.health >= 55) {
     badges.push({
       id: 'emergency',
-      name: 'Emergency Specialist',
-      desc: 'Handled 3+ emergencies like a real flight director.',
+      name: 'Emergency Hero',
+      desc: 'Handled 3 or more emergencies. Brave!',
       emoji: '🚨',
     });
   }
   if (minFood >= 45) {
     badges.push({
       id: 'green',
-      name: 'Green Thumb',
-      desc: 'Never let food stores drop below 45%. Space farmer elite.',
+      name: 'Space Farmer',
+      desc: 'Never let the food get low.',
       emoji: '🌱',
     });
   }
-  if (!earlyEnd && state.day >= TOTAL_DAYS) {
+  if (!earlyEnd && day >= TOTAL_DAYS) {
     badges.push({
       id: 'full14',
       name: 'Full Mission Patch',
-      desc: `Completed all ${TOTAL_DAYS} days/sols of the mission.`,
+      desc: `Finished all ${TOTAL_DAYS} days of the mission!`,
       emoji: '🎖️',
     });
   }

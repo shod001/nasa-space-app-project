@@ -10,24 +10,24 @@ import type { Allocation, Choice, Deltas, GameEvent, ResourceState } from '@/lib
 export function BriefingCard({ event, onProceed }: { event: GameEvent; onProceed: () => void }) {
   return (
     <section
-      className={`panel rounded-3xl p-5 ${event.critical ? 'border-rose-400/40 animate-[ring-pulse_1.4s_ease-in-out_infinite]' : ''}`}
+      className={`panel rounded-3xl p-5 ${event.critical ? 'animate-[ring-pulse_1.4s_ease-in-out_infinite] border-rose-400/40' : ''}`}
       aria-label="Morning briefing"
     >
       {event.critical && (
-        <p className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-rose-300 mb-2">
-          <AlertTriangle className="w-4 h-4 animate-pulse" aria-hidden /> Emergency briefing
+        <p className="mb-2 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-rose-300">
+          <AlertTriangle className="h-5 w-5 animate-pulse" aria-hidden /> Emergency day!
         </p>
       )}
-      <h3 className="font-display text-xl text-white">{event.title}</h3>
-      <p className="mt-1.5 text-sm text-violet-100/75 leading-relaxed">{event.astro}</p>
+      <h3 className="font-display text-2xl text-white">{event.title}</h3>
+      <p className="mt-2 text-base font-semibold leading-relaxed text-violet-100/85">{event.astro}</p>
       <button
         onClick={() => {
           sfx.confirm();
           onProceed();
         }}
-        className="mt-4 min-h-[52px] w-full rounded-2xl font-display text-base font-semibold text-space-950 bg-gradient-to-r from-fuchsia-300 to-violet-300 hover:from-fuchsia-200 hover:to-violet-200 active:scale-[0.98] transition flex items-center justify-center gap-2"
+        className="mt-4 flex min-h-[60px] w-full items-center justify-center gap-2 rounded-2xl border-b-4 border-fuchsia-500/60 bg-gradient-to-r from-fuchsia-300 to-violet-300 font-display text-lg font-bold text-space-950 transition active:scale-[0.98] hover:from-fuchsia-200 hover:to-violet-200"
       >
-        See your options <ArrowRight className="w-5 h-5" aria-hidden />
+        See your choices <ArrowRight className="h-5 w-5" aria-hidden />
       </button>
     </section>
   );
@@ -54,16 +54,16 @@ export function ActionPanel({
   const ready = used === 10;
   return (
     <section className="panel rounded-3xl p-4" aria-label="Assign power cubes">
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <h3 className="font-display text-lg text-white flex items-center gap-2">
-          <Zap className="w-5 h-5 text-amber-300" aria-hidden /> Power the Base
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 font-display text-xl text-white">
+          <Zap className="h-6 w-6 text-amber-300" aria-hidden /> Power the Base
         </h3>
-        <span className="text-[11px] text-violet-200/60 text-right max-w-[55%]">
-          Plan: <span className="text-white font-bold">{chosen.label}</span>
+        <span className="max-w-[55%] text-right text-sm text-violet-200/60">
+          Plan: <span className="font-bold text-white">{chosen.label}</span>
         </span>
       </div>
-      <p className="text-xs text-violet-100/70 mb-3 leading-relaxed">
-        Drag or tap the glowing cubes into your modules. {event.kind === 'quiet' ? 'A calm day — set your rhythm!' : 'Every cube is energy spent — choose wisely!'}
+      <p className="mb-3 text-sm leading-relaxed text-violet-100/75">
+        Drag the glowing cubes into the modules. {event.kind === 'quiet' ? 'A calm day — set your rhythm!' : 'Every cube is energy — choose wisely!'}
       </p>
       <EnergyAllocator alloc={alloc} onChange={onChange} resources={resources} showSuggestion />
       <button
@@ -72,9 +72,9 @@ export function ActionPanel({
           onRunDay();
         }}
         disabled={!ready}
-        className="mt-4 min-h-[52px] w-full rounded-2xl font-display text-base font-semibold text-space-950 bg-gradient-to-r from-emerald-300 to-lime-300 hover:from-emerald-200 hover:to-lime-200 active:scale-[0.98] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="mt-4 flex min-h-[60px] w-full items-center justify-center gap-2 rounded-2xl border-b-4 border-emerald-600/60 bg-gradient-to-r from-emerald-300 to-lime-300 font-display text-lg font-bold text-space-950 transition active:scale-[0.98] hover:from-emerald-200 hover:to-lime-200 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <Play className="w-5 h-5" aria-hidden /> Run the Day
+        <Play className="h-6 w-6" aria-hidden /> Run the Day!
       </button>
     </section>
   );
@@ -82,15 +82,15 @@ export function ActionPanel({
 
 /* ---------- Resolution panel ---------- */
 
-const DELTA_LABELS: { key: keyof Deltas; name: string; positive: boolean }[] = [
-  { key: 'science', name: 'Science', positive: true },
-  { key: 'power', name: 'Power', positive: true },
-  { key: 'oxygen', name: 'Oxygen', positive: true },
-  { key: 'food', name: 'Food', positive: true },
-  { key: 'shield', name: 'Shield', positive: true },
-  { key: 'health', name: 'Health', positive: true },
-  { key: 'morale', name: 'Morale', positive: true },
-  { key: 'fuelCells', name: 'Fuel cells', positive: true },
+const DELTA_LABELS: { key: keyof Deltas; name: string }[] = [
+  { key: 'science', name: 'Science' },
+  { key: 'power', name: 'Power' },
+  { key: 'oxygen', name: 'Oxygen' },
+  { key: 'food', name: 'Food' },
+  { key: 'shield', name: 'Shield' },
+  { key: 'health', name: 'Health' },
+  { key: 'morale', name: 'Happy' },
+  { key: 'fuelCells', name: 'Fuel cells' },
 ];
 
 export function ResolutionPanel({
@@ -107,19 +107,19 @@ export function ResolutionPanel({
   const rows = DELTA_LABELS.filter((r) => (r.key === 'fuelCells' ? deltas.fuelCells !== 0 : deltas[r.key] !== 0));
   return (
     <section className="panel rounded-3xl p-5" aria-label="Day results">
-      <p className="text-[10px] uppercase tracking-widest text-violet-300/70 font-bold">Simulation complete</p>
-      <h3 className="font-display text-lg text-white mt-0.5">{chosen.label}</h3>
-      <p className="text-sm text-violet-100/80 mt-1.5 leading-relaxed">{chosen.result}</p>
+      <p className="text-xs font-black uppercase tracking-widest text-violet-300/70">Day complete!</p>
+      <h3 className="mt-0.5 font-display text-xl text-white">{chosen.label}</h3>
+      <p className="mt-2 text-base leading-relaxed text-violet-100/85">{chosen.result}</p>
 
-      <div className="flex flex-wrap gap-1.5 mt-3">
+      <div className="mt-3 flex flex-wrap gap-2">
         {rows.map((r, i) => {
           const v = deltas[r.key];
-          const good = r.key === 'fuelCells' ? v > 0 : v > 0;
+          const good = v > 0;
           return (
             <span
               key={r.key}
-              className={`animate-[pop-in_0.35s_ease-out_both] text-xs font-bold rounded-full px-2.5 py-1 border ${
-                good ? 'text-emerald-300 border-emerald-400/30 bg-emerald-400/10' : 'text-rose-300 border-rose-400/30 bg-rose-400/10'
+              className={`animate-[pop-in_0.35s_ease-out_both] rounded-full border px-3 py-1.5 text-sm font-black ${
+                good ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : 'border-rose-400/30 bg-rose-400/10 text-rose-300'
               }`}
               style={{ animationDelay: `${i * 90}ms` }}
             >
@@ -128,11 +128,11 @@ export function ResolutionPanel({
             </span>
           );
         })}
-        {rows.length === 0 && <span className="text-xs text-violet-200/60 italic">A steady day — nothing changed much.</span>}
+        {rows.length === 0 && <span className="text-sm italic text-violet-200/60">A steady day — nothing changed much.</span>}
       </div>
 
       {notes && (
-        <p className="mt-3 text-xs text-amber-200/90 bg-amber-400/10 border border-amber-400/25 rounded-xl px-3 py-2 leading-relaxed">
+        <p className="mt-3 rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2.5 text-sm leading-relaxed text-amber-200/90">
           ⚠ {notes}
         </p>
       )}
@@ -142,9 +142,9 @@ export function ResolutionPanel({
           sfx.confirm();
           onProceed();
         }}
-        className="mt-4 min-h-[52px] w-full rounded-2xl font-display text-base font-semibold text-space-950 bg-gradient-to-r from-amber-300 to-amber-400 hover:from-amber-200 hover:to-amber-300 active:scale-[0.98] transition flex items-center justify-center gap-2"
+        className="mt-4 flex min-h-[60px] w-full items-center justify-center gap-2 rounded-2xl border-b-4 border-amber-500/60 bg-gradient-to-r from-amber-300 to-amber-400 font-display text-lg font-bold text-space-950 transition active:scale-[0.98] hover:from-amber-200 hover:to-amber-300"
       >
-        End-of-day summary <ArrowRight className="w-5 h-5" aria-hidden />
+        Night report <ArrowRight className="h-5 w-5" aria-hidden />
       </button>
     </section>
   );
