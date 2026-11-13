@@ -3,6 +3,7 @@
 import { useCallback, useReducer } from 'react';
 import { applyDeltas, checkAchievements, endingFor, pickEmergency, resolveDay } from '@/lib/game/engine';
 import { getEventForDay } from '@/lib/game/events';
+import { STORIES, introStoryFor, storyForDay } from '@/lib/game/story';
 import {
   DEFAULT_ALLOCATION,
   DIFFICULTIES,
@@ -19,6 +20,7 @@ export type GameAction =
   | { type: 'START' }
   | { type: 'PICK_LOCATION'; location: Location }
   | { type: 'PICK_DIFFICULTY'; difficulty: Difficulty }
+  | { type: 'STORY_DONE' }
   | { type: 'CONFIRM_SETUP' }
   | { type: 'PROCEED' }
   | { type: 'PICK_CHOICE'; choice: Choice }
@@ -43,6 +45,8 @@ function initialState(soundOn = true): GameState {
     goal: 380,
     allocation: { ...DEFAULT_ALLOCATION },
     event: null,
+    storyId: null,
+    seenStories: [],
     chosen: null,
     lastDeltas: null,
     history: [],
@@ -67,12 +71,35 @@ function reducer(state: GameState, action: GameAction): GameState {
 
     case 'PICK_DIFFICULTY': {
       const cfg = DIFFICULTIES[action.difficulty];
+      const intro = state.location ? introStoryFor(state.location) : null;
       return {
         ...state,
         difficulty: action.difficulty,
         goal: cfg.goal,
         resources: { ...cfg.start },
-        phase: 'setup',
+        phase: intro ? 'story' : 'setup',
+        storyId: intro ? intro.id : null,
+      };
+    }
+
+    case 'STORY_DONE': {
+      const story = state.storyId ? STORIES[state.storyId] : null;
+      if (!story) return state;
+      const seenStories = state.seenStories.includes(story.id)
+        ? state.seenStories
+        : [...state.seenStories, story.id];
+      // Intro story leads to base setup; milestone stories lead to the day's briefing.
+      if (story.kind === 'intro') {
+        return { ...state, phase: 'setup', storyId: null, seenStories };
+      }
+      return {
+        ...state,
+        phase: 'briefing',
+        storyId: null,
+        seenStories,
+        event: state.location ? getEventForDay(state.location, state.day) : null,
+        chosen: null,
+        lastDeltas: null,
       };
     }
 
@@ -96,6 +123,18 @@ function reducer(state: GameState, action: GameAction): GameState {
           return { ...state, phase: 'debrief', final: endingFor(state) };
         }
         const nextDay = state.day + 1;
+        // Milestone story beats play before the day's briefing (once each).
+        const story = state.location ? storyForDay(state.location, nextDay) : null;
+        if (story && !state.seenStories.includes(story.id)) {
+          return {
+            ...state,
+            phase: 'story',
+            day: nextDay,
+            storyId: story.id,
+            chosen: null,
+            lastDeltas: null,
+          };
+        }
         return {
           ...state,
           phase: 'briefing',
@@ -192,6 +231,7 @@ export function useGame() {
   const start = useCallback(() => dispatch({ type: 'START' }), []);
   const pickLocation = useCallback((location: Location) => dispatch({ type: 'PICK_LOCATION', location }), []);
   const pickDifficulty = useCallback((d: Difficulty) => dispatch({ type: 'PICK_DIFFICULTY', difficulty: d }), []);
+  const storyDone = useCallback(() => dispatch({ type: 'STORY_DONE' }), []);
   const confirmSetup = useCallback(() => dispatch({ type: 'CONFIRM_SETUP' }), []);
   const proceed = useCallback(() => dispatch({ type: 'PROCEED' }), []);
   const pickChoice = useCallback((choice: Choice) => dispatch({ type: 'PICK_CHOICE', choice }), []);
@@ -210,6 +250,7 @@ export function useGame() {
     start,
     pickLocation,
     pickDifficulty,
+    storyDone,
     confirmSetup,
     proceed,
     pickChoice,

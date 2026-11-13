@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { RotateCcw, Rocket, Satellite, Star } from 'lucide-react';
 import AstroPanel, { type AstroMood } from './AstroPanel';
 import { sfx } from '@/lib/game/audio';
-import type { GameState, Location } from '@/lib/game/types';
+import { TOTAL_DAYS, type GameState, type Location } from '@/lib/game/types';
 
 const NASA_CARDS: Record<Location, { system: string; title: string; text: string }[]> = {
   moon: [
@@ -144,6 +145,11 @@ const TIER_MOOD: Record<string, AstroMood> = {
   abort: 'worried',
 };
 
+const RIDE_HOME: Record<Location, string> = {
+  moon: 'The rocket hums softly while Earth grows bigger every hour. The crew sleeps, dreams, and high-fives A.S.T.R.O. in the morning. Welcome home, Commander!',
+  mars: 'After many quiet months in space, a little blue dot appears in the window... Earth! The whole crew cheers loud enough to hear all the way back to Mars. Welcome home, Commander!',
+};
+
 function StatCard({ label, value, emoji }: { label: string; value: string; emoji: string }) {
   return (
     <div className="panel-soft rounded-2xl p-4 text-center">
@@ -255,6 +261,28 @@ export default function Debrief({ state, onRestart }: { state: GameState; onRest
         <StatCard emoji="❤️" label="Crew Health" value={`${healthCount}%`} />
         <StatCard emoji="😄" label="Crew Happy" value={`${moraleCount}%`} />
       </section>
+
+      {/* Story epilogue: the ride home (full missions only) */}
+      {state.history.length >= TOTAL_DAYS && (
+        <section className="panel mt-8 overflow-hidden rounded-3xl" aria-label="Story: the ride home">
+          <div className="relative aspect-[21/9]">
+            <Image
+              src="/images/story-homecoming.png"
+              alt="A cute cartoon rocket flying home toward Earth with stars streaking past"
+              fill
+              sizes="(max-width: 768px) 100vw, 1024px"
+              className="object-cover"
+            />
+            <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-space-950/70 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-fuchsia-300 backdrop-blur">
+              ✨ Story
+            </span>
+          </div>
+          <div className="p-5">
+            <h3 className="font-display text-2xl text-white">🚀 The Ride Home</h3>
+            <p className="mt-2 text-lg leading-relaxed text-violet-100/85">{RIDE_HOME[location]}</p>
+          </div>
+        </section>
+      )}
 
       {/* Badges with shine */}
       <section className="mt-8" aria-label="Badges earned">

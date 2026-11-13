@@ -258,6 +258,7 @@ export type Phase =
   | 'title'
   | 'location'
   | 'difficulty'
+  | 'story'
   | 'setup'
   | 'briefing'
   | 'decision'
@@ -277,6 +278,10 @@ export interface GameState {
   goal: number;
   allocation: Allocation;
   event: GameEvent | null;
+  /** id of the story beat currently on screen (phase === 'story') */
+  storyId: string | null;
+  /** story beats already watched, so milestones never repeat */
+  seenStories: string[];
   chosen: Choice | null;
   lastDeltas: Deltas | null;
   history: DayRecord[];

@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { Rocket, Satellite, Sparkles } from 'lucide-react';
+import { BookOpen, Rocket, Satellite, Sparkles, Target } from 'lucide-react';
 import { sfx } from '@/lib/game/audio';
 
 export default function TitleScreen({ onStart }: { onStart: () => void }) {
@@ -56,7 +56,10 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
             <Satellite className="h-4 w-4 text-emerald-300" aria-hidden /> Real NASA science
           </span>
           <span className="panel-soft flex items-center gap-1.5 rounded-full px-4 py-2 text-violet-200">
-            🎯 Easy, Normal, and Hard modes
+            <Target className="h-4 w-4 text-amber-300" aria-hidden /> Easy, Normal, and Hard modes
+          </span>
+          <span className="panel-soft flex items-center gap-1.5 rounded-full px-4 py-2 text-violet-200">
+            <BookOpen className="h-4 w-4 text-sky-300" aria-hidden /> Story scenes + space jokes
           </span>
         </div>
 

@@ -5,12 +5,14 @@ import { Rocket, Users } from 'lucide-react';
 import { setSoundEnabled, sfx } from '@/lib/game/audio';
 import { useGame } from '@/hooks/use-game';
 import { sceneStatuses } from '@/lib/game/engine';
+import { STORIES } from '@/lib/game/story';
 import { TOTAL_DAYS, type GameState } from '@/lib/game/types';
 import Starfield from './scene/Starfield';
 import BaseScene from './scene/BaseScene';
 import TitleScreen from './TitleScreen';
 import LocationSelect from './LocationSelect';
 import DifficultySelect from './DifficultySelect';
+import StoryScene from './StoryScene';
 import EnergyAllocator from './EnergyAllocator';
 import Hud from './Hud';
 import ResourceBars from './ResourceBars';
@@ -120,6 +122,7 @@ export default function Game() {
     start,
     pickLocation,
     pickDifficulty,
+    storyDone,
     confirmSetup,
     proceed,
     pickChoice,
@@ -167,6 +170,17 @@ export default function Game() {
         <DifficultySelect location={state.location ?? 'moon'} onPick={pickDifficulty} />
       </Shell>
     );
+  }
+
+  if (state.phase === 'story' && state.storyId) {
+    const beat = STORIES[state.storyId];
+    if (beat) {
+      return (
+        <Shell state={state}>
+          <StoryScene beat={beat} onDone={storyDone} />
+        </Shell>
+      );
+    }
   }
 
   if (state.phase === 'setup') {
