@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --accent: #1f6c92;
+    --mid: #32454e;
+    --border: #acbdc5;
+    --muted: #747b7e;
+    --fill-a: #eef4f8;
+    --fill-b: #e8f0f5;
+    --text: #131515;
+  }
+  html, body { margin: 0; padding: 0; background: #ffffff; }
+  .canvas {
+    width: 900px;
+    padding: 24px 28px 20px 28px;
+    box-sizing: border-box;
+    background: #ffffff;
+    font-family: 'Liberation Sans', Arial, sans-serif;
+  }
+  .loop-label {
+    font-size: 18px; font-weight: 700; color: var(--mid);
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px 40px; max-width: 100%; }
+  .step {
+    background: var(--fill-a);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 16px 16px 14px 16px;
+    box-sizing: border-box;
+    position: relative;
+    min-height: 150px;
+  }
+  .step.final { background: var(--fill-b); border-color: var(--mid); }
+  /* horizontal arrows within a row */
+  .step + .step::before {
+    content: '\2192';
+    position: absolute; left: -34px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 26px; color: var(--accent); font-weight: 700;
+  }
+  .step.rowstart::before { content: none; }
+  /* row-to-row connector */
+  .rowbreak {
+    position: relative; height: 0;
+  }
+  .rowbreak .turn {
+    position: absolute; right: 30px; top: -18px;
+    font-size: 26px; color: var(--accent); font-weight: 700;
+  }
+  .step-num {
+    display: inline-block; width: 34px; height: 34px; line-height: 34px;
+    border-radius: 50%; background: var(--accent); color: #ffffff;
+    font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 10px;
+  }
+  .step.final .step-num { background: var(--mid); }
+  .step-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 7px; }
+  .step-desc { font-size: 16px; line-height: 1.4; color: #46525a; }
+  .loopback {
+    margin-top: 18px;
+    border-top: 2px dashed var(--border);
+    padding-top: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .loopback .back { font-size: 16px; color: var(--muted); }
+  .loopback .back b { color: var(--accent); }
+  .loopback .final-note { font-size: 16px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="loop-label">Daily Mission Loop &mdash; repeated across the 14-day / Sol mission</div>
+  <div class="grid">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">Morning Briefing</div>
+      <div class="step-desc">A.S.T.R.O., the AI copilot, greets the commander and sets up today&rsquo;s challenge.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">NASA Data Event</div>
+      <div class="step-desc">A live DONKI space-weather feed or a scripted card arrives with a real-data badge.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">Power Allocation</div>
+      <div class="step-desc">Energy cubes are dragged between Life Support, Shields, Science Lab and Greenhouse.</div>
+    </div>
+    <div class="step rowstart">
+      <div class="step-num">4</div>
+      <div class="step-title">Decision Card</div>
+      <div class="step-desc">Two or three options &mdash; safe, balanced or risky &mdash; each with visible trade-offs.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-title">Day Resolution</div>
+      <div class="step-desc">Power, oxygen, food, shields, crew health, morale and science totals are updated.</div>
+    </div>
+    <div class="step final">
+      <div class="step-num">6</div>
+      <div class="step-title">Debrief &amp; Badges</div>
+      <div class="step-desc">At mission end, A.S.T.R.O. reviews the run and up to 7 merit badges are awarded.</div>
+    </div>
+  </div>
+  <div class="loopback">
+    <div class="back">&#8635; Steps 1&ndash;5 repeat every in-game day until <b>Sol / Day 14</b> or an early mission return.</div>
+    <div class="final-note">Step 6 triggers once, at mission end.</div>
+  </div>
+</div>
+</body>
+</html>
