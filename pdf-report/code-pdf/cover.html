@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: 794px 1123px; margin: 0; }
+  :root {
+    --c-bg: #eff0f1;
+    --c-accent: #3681a6;
+    --c-text: #1a1b1c;
+    --c-muted: #6f7578;
+    --c-mid: #334650;
+    --c-surface: #e4e7e8;
+  }
+  html, body {
+    margin: 0; padding: 0;
+    width: 794px; height: 1123px;
+    background: var(--c-bg);
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    color: var(--c-text);
+  }
+  @media screen {
+    html { height: auto; display: flex; justify-content: center; min-height: 100vh; background: var(--c-bg); }
+    body { transform-origin: top center; scale: min(1, calc(100vw / 794), calc(100vh / 1123)); margin: 0 auto; box-shadow: 0 0 60px rgba(0,0,0,0.18); }
+  }
+  .cover { position: relative; width: 794px; height: 1123px; border: none; outline: none; box-shadow: none; }
+
+  /* Layer 1 - background grid (2% opacity, clipped) */
+  .layer1 { position: absolute; inset: 0; overflow: hidden; z-index: 1; }
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(51,70,80,0.05) 0.5px, transparent 0.5px),
+      linear-gradient(to bottom, rgba(51,70,80,0.05) 0.5px, transparent 0.5px);
+    background-size: 50px 50px;
+  }
+
+  /* Layer 2 - structure: ultra-thick left anchor line */
+  .layer2 { position: absolute; inset: 0; z-index: 2; }
+  .anchor-line {
+    position: absolute;
+    left: 95px; top: 112px;
+    width: 8px; height: 899px;
+    background: var(--c-accent);
+  }
+
+  /* Layer 3 - content */
+  .layer3 { position: absolute; inset: 0; z-index: 3; }
+  .kicker {
+    position: absolute; left: 160px; top: 168px;
+    font-size: 16pt; font-weight: 400;
+    letter-spacing: 4px; text-transform: uppercase;
+    color: var(--c-mid); opacity: 0.6;
+  }
+  .title1 {
+    position: absolute; left: 160px; top: 304px;
+    max-width: 523px;
+    font-size: 36pt; font-weight: 900;
+    line-height: 1.15; color: var(--c-text);
+  }
+  .title2 {
+    position: absolute; left: 160px; top: 366px;
+    max-width: 523px;
+    font-size: 36pt; font-weight: 900;
+    line-height: 1.15; color: var(--c-accent);
+  }
+  .summary {
+    position: absolute; left: 160px; top: 561px;
+    max-width: 480px;
+    font-size: 16.5pt; font-weight: 400;
+    line-height: 1.6; color: var(--c-text); opacity: 0.85;
+  }
+  .meta {
+    position: absolute; left: 160px; top: 842px;
+    font-size: 16pt; font-weight: 500;
+    color: var(--c-mid); line-height: 1.7;
+  }
+  .meta .sub {
+    font-size: 16pt; font-weight: 400;
+    color: var(--c-muted); margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+  <div class="cover">
+    <div class="layer1"><div class="grid"></div></div>
+    <div class="layer2"><div class="anchor-line"></div></div>
+    <div class="layer3">
+      <div class="kicker">Code &amp; Architecture Explainer</div>
+      <div class="title1">OUTPOST DIRECTOR</div>
+      <div class="title2">MOON &amp; MARS</div>
+      <div class="summary">A guided tour of the mission game&rsquo;s code: the pure TypeScript
+        simulation core, the single-reducer state tree, eleven hand-crafted
+        components, and two NASA-powered API routes that degrade gracefully
+        when offline.</div>
+      <div class="meta">
+        Next.js 16 &middot; React 19 &middot; TypeScript 5 &middot; Tailwind CSS 4
+        <div class="sub">November 2026 &middot; Prepared for the project presentation</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

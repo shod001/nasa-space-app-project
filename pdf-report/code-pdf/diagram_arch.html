@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 800px; background: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; }
+  .canvas { width: 800px; padding: 18px 20px 20px 20px; background: #ffffff; }
+  .band { border: 1.5px solid #b8c8cf; border-radius: 10px; background: #f0f1f2; padding: 12px 14px 14px 14px; }
+  .band-label { font-size: 15px; font-weight: 700; letter-spacing: 1.5px; color: #334650; margin-bottom: 10px; }
+  .band-label .tag { font-size: 12px; font-weight: 500; color: #6f7578; letter-spacing: 0.5px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; max-width: 100%; }
+  .node { flex: 1 1 auto; min-width: 150px; max-width: 100%; background: #ffffff; border: 1.5px solid #52798c; border-radius: 8px; padding: 10px 12px; overflow-wrap: break-word; }
+  .node h4 { font-size: 17px; font-weight: 700; color: #1a1b1c; line-height: 1.25; margin-bottom: 3px; }
+  .node p { font-size: 13.5px; color: #6f7578; line-height: 1.35; }
+  .node.ext { border-style: dashed; background: #f7f8f9; }
+  .arrow-row { display: flex; justify-content: center; align-items: center; height: 44px; position: relative; }
+  .arrow-row svg { position: absolute; left: 0; top: 0; width: 100%; height: 44px; }
+  .arrow-label { position: relative; font-size: 13.5px; color: #3681a6; font-weight: 600; background: #ffffff; padding: 0 8px; }
+  .logic-strip { margin-top: 14px; border: 1.5px dashed #52798c; border-radius: 10px; background: #f7f8f9; padding: 11px 14px; }
+  .chip { display: inline-block; background: #e4e7e8; border: 1px solid #b8c8cf; border-radius: 5px; padding: 3px 8px; font-size: 13px; color: #334650; margin: 2px 4px 2px 0; font-family: 'Courier New', monospace; }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <div class="band">
+    <div class="band-label">BROWSER &nbsp;&middot;&nbsp; <span class="tag">React 19 client, rendered by Next.js App Router</span></div>
+    <div class="row">
+      <div class="node"><h4>app/page.tsx</h4><p>5 lines &mdash; renders &lt;Game /&gt;</p></div>
+      <div class="node"><h4>components/game/*</h4><p>11 UI components incl. BaseScene (SVG)</p></div>
+      <div class="node"><h4>hooks/use-game.ts</h4><p>useReducer &mdash; 11 action types</p></div>
+    </div>
+  </div>
+
+  <div class="arrow-row">
+    <svg viewBox="0 0 760 44">
+      <defs><marker id="a1" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#52798c"/></marker></defs>
+      <line x1="380" y1="4" x2="380" y2="34" stroke="#52798c" stroke-width="1.6" marker-end="url(#a1)"/>
+    </svg>
+    <span class="arrow-label">fetch() &mdash; lazy, fired once, no polling</span>
+  </div>
+
+  <div class="band">
+    <div class="band-label">API ROUTES &nbsp;&middot;&nbsp; <span class="tag">Next.js route handlers, Node.js runtime, graceful fallbacks</span></div>
+    <div class="row">
+      <div class="node"><h4>GET /api/donki</h4><p>NASA FLR + CME proxy, 3.5 s timeout, demo feed on failure</p></div>
+      <div class="node"><h4>POST /api/astro-debrief</h4><p>LLM farewell message, template fallback</p></div>
+    </div>
+  </div>
+
+  <div class="arrow-row">
+    <svg viewBox="0 0 760 44">
+      <defs><marker id="a2" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#52798c"/></marker></defs>
+      <line x1="150" y1="4" x2="150" y2="34" stroke="#52798c" stroke-width="1.6" marker-end="url(#a2)"/>
+      <line x1="610" y1="4" x2="610" y2="34" stroke="#52798c" stroke-width="1.6" marker-end="url(#a2)"/>
+    </svg>
+    <span class="arrow-label" style="position:absolute; left:150px; transform:translateX(-50%); margin-left:56px;">HTTPS</span>
+    <span class="arrow-label" style="position:absolute; left:610px; transform:translateX(-50%); margin-left:56px;">SDK call</span>
+  </div>
+
+  <div class="band" style="background:#f7f8f9;">
+    <div class="band-label">EXTERNAL SERVICES &nbsp;&middot;&nbsp; <span class="tag">optional &mdash; the game is fully playable without them</span></div>
+    <div class="row">
+      <div class="node ext"><h4>api.nasa.gov &mdash; DONKI</h4><p>Solar flares (FLR) + coronal mass ejections (CME), last 14 days</p></div>
+      <div class="node ext"><h4>z-ai-web-dev-sdk</h4><p>Chat completions &mdash; writes A.S.T.R.O.&rsquo;s final debrief</p></div>
+    </div>
+  </div>
+
+  <div class="logic-strip">
+    <div class="band-label">PURE LOGIC LAYER &nbsp;&middot;&nbsp; <span class="tag">src/lib/game &mdash; plain TypeScript, zero I/O, fully testable</span></div>
+    <span class="chip">types.ts (140 ln)</span>
+    <span class="chip">engine.ts (314 ln)</span>
+    <span class="chip">events.ts (1,111 ln)</span>
+    <span class="chip">audio.ts (76 ln)</span>
+  </div>
+
+</div>
+</body>
+</html>
