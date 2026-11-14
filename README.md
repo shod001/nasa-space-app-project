@@ -6,7 +6,7 @@ Built with Next.js 16, React 19, TypeScript, Tailwind CSS, and shadcn/ui.
 
 ## Play
 
-- **Live app:** _(link added after deployment)_
+- **Live app:** https://nasa-space-app-project.vercel.app
 
 ## Features
 
